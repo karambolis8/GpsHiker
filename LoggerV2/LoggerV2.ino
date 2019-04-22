@@ -1,16 +1,32 @@
 //https://electronics.stackexchange.com/questions/25278/how-to-connect-multiple-i2c-interface-devices-into-a-single-pin-a4-sda-and-a5
 
-
 #include "Config.h"
 
 #ifdef GPS_BAUD
   #include "NMEAGPS.h"
   #include "GPSport.h"
+  
+  #ifndef NMEAGPS_PARSE_GSV
+    #error You must define NMEAGPS_PARSE_GSV in NMEAGPS_cfg.h!
+  #endif
+  
+  #ifndef NMEAGPS_PARSE_SATELLITES
+    #error You must define NMEAGPS_PARSE_SATELLITE in NMEAGPS_cfg.h!
+  #endif
+  
+  #ifndef NMEAGPS_PARSE_SATELLITE_INFO
+    #error You must define NMEAGPS_PARSE_SATELLITE_INFO in NMEAGPS_cfg.h!
+  #endif
 
   NMEAGPS  gps;
   gps_fix  fix;
   int zeroingCounter = GPS_ZEROING_TIME;
   unsigned long lastZeroingUpdate = 0;
+  long Speed = 0;
+  long MaxSpeed = 0;
+  int Height = 0;
+  int MaxHeight, ZeroHeight = 0;
+  int numSV = 0;
   
   #include <SimpleKalmanFilter.h>
   SimpleKalmanFilter gpsAltitudeFilter(0.03, 0.003, 0.03); 
@@ -46,28 +62,6 @@
   Adafruit_BME280 bme;
   float PressureAltitude, MaxPressureAltitude = 0;
   float gndPressure = 0;
-#endif
-
-#ifdef GPS_BAUD
-  #ifndef NMEAGPS_PARSE_GSV
-    #error You must define NMEAGPS_PARSE_GSV in NMEAGPS_cfg.h!
-  #endif
-  
-  #ifndef NMEAGPS_PARSE_SATELLITES
-    #error You must define NMEAGPS_PARSE_SATELLITE in NMEAGPS_cfg.h!
-  #endif
-  
-  #ifndef NMEAGPS_PARSE_SATELLITE_INFO
-    #error You must define NMEAGPS_PARSE_SATELLITE_INFO in NMEAGPS_cfg.h!
-  #endif
-#endif
-
-#ifdef GPS_BAUD
-  long Speed = 0;
-  long MaxSpeed = 0;
-  int Height = 0;
-  int MaxHeight, ZeroHeight = 0;
-  int numSV = 0;
 #endif
 
 #ifdef TEMP1
