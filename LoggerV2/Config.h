@@ -11,8 +11,8 @@
 
 #define OLED
 
-#define SD_CARD
-#define SD_LOG_TIME 1000
+//#define SD_CARD
+//#define SD_LOG_TIME 1000
 
 //#define GY61
 #define TEMP1 0

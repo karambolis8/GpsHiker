@@ -34,6 +34,8 @@
 #endif
 
 #ifdef OLED
+  #define FS(x) (__FlashStringHelper*)(x)
+  
   #include <Wire.h>
   #include <Arduino.h>
   #include <U8x8lib.h>
@@ -42,8 +44,10 @@
   unsigned long lastScreenUpdate = 0; 
   bool doScreenUpdate = false;
   bool displayStats = false;
+  int currentScreen = -1;
 
-  char *clearLine = "                ";
+  const char clearLine[] PROGMEM = { "                " };
+  const char space[] PROGMEM = { " " };
 #endif
 
 #ifdef SD_CARD
@@ -90,6 +94,7 @@ void setup()
 
 #ifdef OLED
   initOled();
+  displayHeader();
 #endif
 
 #ifdef BME280
@@ -184,15 +189,16 @@ void loop()
 #ifdef OLED
 void updateScreen()
 {
-  displayHeader();
-
   if (numSV < GPS_MIN_SAT)
   {
-    clearLines(2); 
-    u8x8.setCursor(0, 2);
-    u8x8.print(F("Waiting for sats"));
-    u8x8.setCursor(0, 3);
-    u8x8.print(F("Sats:"));
+    if(currentScreen != 0)
+    {
+      printWaitingLayout();
+      currentScreen = 0;
+    }
+    u8x8.setCursor(5,3);
+    if(numSV < 10)
+      u8x8.print(FS(space));
     u8x8.print(numSV);
   }
   else
@@ -209,6 +215,170 @@ void updateScreen()
 
   if(buttonPressed)
     displayStats = not displayStats;
+}
+
+void printWaitingLayout()
+{
+    clearLines(2); 
+    u8x8.setCursor(0, 2);
+    u8x8.print(F("Waiting for sats"));
+    u8x8.setCursor(0, 3);
+    u8x8.print(F("Sats:"));
+}
+
+void displayHeader()
+{
+  u8x8.setCursor(0,0);
+  u8x8.print(FS(clearLine));
+  u8x8.print(F("GPS Logger v2"));  
+}
+
+void displayCurrentReadouts()
+{
+  if(currentScreen != 1)
+  {
+    clearLines(2);
+    displayCurrentReadoutsLayout();
+    currentScreen = 1;
+  }
+    
+#ifdef GPS_BAUD
+  u8x8.setCursor(0, 2);
+  u8x8.print(F("Sats:"));
+  u8x8.print(numSV);
+
+  u8x8.setCursor(0, 3);
+  u8x8.print(F("Speed:"));
+  u8x8.print(Speed);
+  u8x8.print(F("km/h"));
+
+  u8x8.setCursor(0, 4);
+  u8x8.print(F("GPS Alt:"));
+  u8x8.print(Height);
+  u8x8.print(F("m"));
+#endif
+  
+  displayCurrentTemp();
+
+#ifdef BME280
+  u8x8.setCursor(0,6);
+  u8x8.print(F("Max Pres Alt:"));
+  u8x8.print(MaxPressureAltitude);
+#endif
+}
+
+void displayCurrentReadoutsLayout()
+{
+      
+#ifdef GPS_BAUD
+  u8x8.setCursor(0, 2);
+  u8x8.print(F("Sats:"));
+  
+  u8x8.setCursor(0, 3);
+  u8x8.print(F("Speed:"));
+  u8x8.setCursor(9, 3);
+  u8x8.print(F("km/h"));
+
+  u8x8.setCursor(0, 4);
+  u8x8.print(F("GPS Alt:"));
+  u8x8.setCursor(11, 4);
+  u8x8.print(F("m"));
+#endif
+
+  //do fixed layout here
+  displayCurrentTemp();
+
+#ifdef BME280
+  u8x8.setCursor(0,6);
+  u8x8.print(F("Max Pres Alt:"));
+#endif
+}
+
+void displayStatistics()
+{ 
+  clearLines(2);    
+  
+  u8x8.setCursor(0, 2); 
+  u8x8.print(F("Sats:"));
+  u8x8.print(numSV);
+
+  
+  u8x8.setCursor(0, 3);
+  u8x8.print(F("Max spd:"));
+  u8x8.print(MaxSpeed);
+  u8x8.print(F("km/h"));
+  
+  u8x8.setCursor(0, 4);
+  
+  if(zeroingCounter > 0)
+  {
+    u8x8.print(F("Zeroing alt  "));
+    if(zeroingCounter > 9)
+    {
+      u8x8.print(zeroingCounter);
+    }
+    else
+    {
+      u8x8.print(F(" ")); 
+      u8x8.print(zeroingCounter);
+    }
+  }
+  else
+  {      
+    u8x8.print(F("Max alt:"));
+    u8x8.print(MaxHeight - ZeroHeight);
+    u8x8.println("m");
+  }
+
+  displayMaxTemp();
+
+#ifdef BME280
+  u8x8.setCursor(0,7);
+  u8x8.print(F("Pres Alt:"));
+  u8x8.print(PressureAltitude);
+#endif
+}
+
+void displayCurrentTemp()
+{
+  u8x8.setCursor(0, 5);  
+#ifdef TEMP1
+  u8x8.print(F("TB:"));
+  u8x8.print(T1);
+  u8x8.print(F("C "));
+#endif
+
+#ifdef TEMP2
+  u8x8.print(F("TG:"));
+  u8x8.print(T2); 
+  u8x8.print(F("C"));
+#endif
+}
+
+void displayMaxTemp()
+{  
+#ifdef TEMP1
+  u8x8.setCursor(0, 5);
+  u8x8.print(F("TB max:"));
+  u8x8.print(T1Max);  
+  u8x8.print(F("C"));
+#endif
+
+#ifdef TEMP2
+  u8x8.setCursor(0, 6);
+  u8x8.print(F("TG max:"));
+  u8x8.print(T2Max); 
+  u8x8.print(F("C"));
+#endif
+}
+
+void clearLines(int startingLine)
+{
+    for(startingLine; startingLine < 8; startingLine++)
+    {
+      u8x8.setCursor(0,startingLine);
+      u8x8.print(FS(clearLine));
+    }
 }
 #endif
 
@@ -322,141 +492,6 @@ void performReadouts()
     MaxPressureAltitude = PressureAltitude;
 #endif
 }
-
-void displayHeader()
-{
-#ifdef OLED
-  u8x8.setCursor(0,0);
-  u8x8.print(clearLine);
-  u8x8.print(F("GPS Logger v2"));  
-#endif
-}
-
-#ifdef OLED
-void displayCurrentReadouts()
-{
-  clearLines(2);
-    
-#ifdef GPS_BAUD
-  u8x8.setCursor(0, 2);
-  u8x8.print(F("Sats:"));
-  u8x8.print(numSV);
-
-  u8x8.setCursor(0, 3);
-  u8x8.print(F("Speed:"));
-  u8x8.print(Speed);
-  u8x8.print(F("km/h"));
-
-  u8x8.setCursor(0, 4);
-  u8x8.print(F("GPS Alt:"));
-  u8x8.print(Height);
-  u8x8.print(F("m"));
-#endif
-  
-  displayCurrentTemp();
-
-#ifdef BME280
-  u8x8.setCursor(0,6);
-  u8x8.print(F("Max Pres Alt:"));
-  u8x8.print(MaxPressureAltitude);
-#endif
-}
-#endif
-
-#ifdef OLED
-void displayStatistics()
-{ 
-  clearLines(2);    
-  
-  u8x8.setCursor(0, 2); 
-  u8x8.print(F("Sats:"));
-  u8x8.print(numSV);
-
-  
-  u8x8.setCursor(0, 3);
-  u8x8.print(F("Max spd:"));
-  u8x8.print(MaxSpeed);
-  u8x8.print(F("km/h"));
-  
-  u8x8.setCursor(0, 4);
-  
-  if(zeroingCounter > 0)
-  {
-    u8x8.print(F("Zeroing alt  "));
-    if(zeroingCounter > 9)
-    {
-      u8x8.print(zeroingCounter);
-    }
-    else
-    {
-      u8x8.print(F(" ")); 
-      u8x8.print(zeroingCounter);
-    }
-  }
-  else
-  {      
-    u8x8.print(F("Max alt:"));
-    u8x8.print(MaxHeight - ZeroHeight);
-    u8x8.println("m");
-  }
-
-  displayMaxTemp();
-
-#ifdef BME280
-  u8x8.setCursor(0,7);
-  u8x8.print(F("Pres Alt:"));
-  u8x8.print(PressureAltitude);
-#endif
-}
-#endif
-
-#ifdef OLED
-void displayCurrentTemp()
-{
-  u8x8.setCursor(0, 5);  
-#ifdef TEMP1
-  u8x8.print(F("TB:"));
-  u8x8.print(T1);
-  u8x8.print(F("C "));
-#endif
-
-#ifdef TEMP2
-  u8x8.print(F("TG:"));
-  u8x8.print(T2); 
-  u8x8.print(F("C"));
-#endif
-}
-#endif
-
-#ifdef OLED
-void displayMaxTemp()
-{  
-#ifdef TEMP1
-  u8x8.setCursor(0, 5);
-  u8x8.print(F("TB max:"));
-  u8x8.print(T1Max);  
-  u8x8.print(F("C"));
-#endif
-
-#ifdef TEMP2
-  u8x8.setCursor(0, 6);
-  u8x8.print(F("TG max:"));
-  u8x8.print(T2Max); 
-  u8x8.print(F("C"));
-#endif
-}
-#endif
-
-#ifdef OLED
-void clearLines(int startingLine)
-{
-    for(startingLine; startingLine < 8; startingLine++)
-    {
-      u8x8.setCursor(0,startingLine);
-      u8x8.print(clearLine);
-    }
-}
-#endif
 
 #if defined(TEMP1) || defined(TEMP2)
 float calculateRawTemp(int port)
