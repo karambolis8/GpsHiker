@@ -1,0 +1,44 @@
+acs712
+ * A0
+ * 5V
+ * GND
+TMP1
+TMP2
+ * 5V
+ * GND
+ * A1
+ * A2
+MPU6050 AD0 – Wybiera adres uk³adu na magistrali I2C (pod³¹czony do GND adres 0x68 – pod³¹czony do Vcc, adres 0x69)
+ * 5V
+ * GND
+ * A4!
+ * A5!
+BME280 (0x77)
+ * 5V
+ * GND
+ * A4!
+ * A5!
+SSD1306 (0x3C)
+ * 5V
+ * GND
+ * A4!
+ * A5!
+https://electronics.stackexchange.com/questions/25278/how-to-connect-multiple-i2c-interface-devices-into-a-single-pin-a4-sda-and-a5
+UBLOX
+ * 5V
+ * GND
+ * D2
+ * D3
+SD (sprawdziæ piny dla Pro Mini w SD examples ReadWrite)
+ * 5V
+ * GND
+ * D10
+ * D11
+ * D12
+ * D13
+Button
+ * D9
+Airspeedd sensor
+ * 5V
+ * GND
+ * A3
