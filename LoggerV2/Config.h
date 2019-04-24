@@ -4,10 +4,10 @@
 #define BUTTON_INPUT 9
 #define BUTTON_DELAY 500
 
-//#define GPS_BAUD 9600 //Serial
-//#define GPS_BAUD 115200
-//#define GPS_MIN_SAT 12
-//#define GPS_ZEROING_TIME 40
+#define GPS_BAUD 9600 //Serial
+#define GPS_BAUD 115200
+#define GPS_MIN_SAT 12
+#define GPS_ZEROING_TIME 40
 
 #define OLED //I2C
 

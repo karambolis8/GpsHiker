@@ -505,7 +505,7 @@ void displayMaxTemp()
 void displayMaxTempLayout()
 {
   u8x8.setCursor(0, 4);
-  u8x8.print(F("Max Tempfa:"));
+  u8x8.print(F("Max Temp:"));
   u8x8.setCursor(13, 4); 
   u8x8.print(F("C"));
 }
