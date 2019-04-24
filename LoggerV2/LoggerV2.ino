@@ -74,10 +74,16 @@
   int T1, T1Max = 0;
 #endif
 
-#ifdef TEMP2
-  #include <SimpleKalmanFilter.h>  
-  SimpleKalmanFilter temp2Filter(0.03, 0.003, 0.03);
-  int T2, T2Max = 0;
+#ifdef ACS712
+  int currentPin = 2;
+  int mvPerAmp = 40;
+  int curretnSesnsorOffset = 2500;
+  double currentSensorVoltage = 0;
+  double MaxCurrent, amps = 0;
+#endif
+
+#ifdef AIRSPEED
+  
 #endif
 
 bool buttonPressed = false;
@@ -189,6 +195,7 @@ void loop()
 #ifdef OLED
 void updateScreen()
 {
+#ifdef GPS_BAUD
   if (numSV < GPS_MIN_SAT)
   {
     if(currentScreen != 0)
@@ -203,6 +210,7 @@ void updateScreen()
   }
   else
   {
+#endif
     if(displayStats)
     {
       displayStatistics();
@@ -211,7 +219,9 @@ void updateScreen()
     {
       displayCurrentReadouts();
     }
+#ifdef GPS_BAUD
   }
+#endif
 
   if(buttonPressed)
     displayStats = not displayStats;
@@ -285,19 +295,26 @@ void displayCurrentReadoutsLayout()
   u8x8.print(F("m"));
 #endif
 
-  //do fixed layout here
-  displayCurrentTemp();
+#ifdef TEMP1
+  displayCurrentTempLayout();
+#endif
 
 #ifdef BME280
   u8x8.setCursor(0,6);
-  u8x8.print(F("Max Pres Alt:"));
+  u8x8.print(F("Press Alt:"));
+#endif
+
+#ifdef ACS712
+  u8x8.setCursor(0,7);
+  u8x8.print(F("Amps:"));
 #endif
 }
 
 void displayStatistics()
 { 
   clearLines(2);    
-  
+
+#ifdef GPS_BAUD
   u8x8.setCursor(0, 2); 
   u8x8.print(F("Sats:"));
   u8x8.print(numSV);
@@ -329,6 +346,7 @@ void displayStatistics()
     u8x8.print(MaxHeight - ZeroHeight);
     u8x8.println("m");
   }
+#endif
 
   displayMaxTemp();
 
@@ -339,38 +357,41 @@ void displayStatistics()
 #endif
 }
 
+#ifdef TEMP1
 void displayCurrentTemp()
 {
   u8x8.setCursor(0, 5);  
-#ifdef TEMP1
-  u8x8.print(F("TB:"));
+  u8x8.print(F("Temp:"));
   u8x8.print(T1);
-  u8x8.print(F("C "));
-#endif
-
-#ifdef TEMP2
-  u8x8.print(F("TG:"));
-  u8x8.print(T2); 
+  u8x8.setCursor(8, 5);  
   u8x8.print(F("C"));
-#endif
+}
+
+void displayCurrentTempLayout()
+{
+  u8x8.setCursor(0, 5);
+  u8x8.print(F("Temp:"));
+  u8x8.setCursor(9, 5);  
+  u8x8.print(F("C"));
 }
 
 void displayMaxTemp()
-{  
-#ifdef TEMP1
+{
+  int tempPosition = 0; //rozpatrzyc warunki jak mniejse czy wieksze od zero, ile cyfr itp.
   u8x8.setCursor(0, 5);
-  u8x8.print(F("TB max:"));
-  u8x8.print(T1Max);  
+  u8x8.print(F("Temp max:"));
+  u8x8.setCursor(13, 5); 
   u8x8.print(F("C"));
-#endif
-
-#ifdef TEMP2
-  u8x8.setCursor(0, 6);
-  u8x8.print(F("TG max:"));
-  u8x8.print(T2Max); 
-  u8x8.print(F("C"));
-#endif
 }
+
+void displayMaxTempLayout()
+{
+  u8x8.setCursor(0, 5);
+  u8x8.print(F("Temp max:"));
+  u8x8.setCursor(13, 5); 
+  u8x8.print(F("C"));
+}
+#endif
 
 void clearLines(int startingLine)
 {
@@ -399,11 +420,6 @@ void logToSD()
 
 #ifdef TEMP1
     myFile.print(T1);
-    myFile.print(F(";"));
-#endif
-
-#ifdef TEMP2
-    myFile.print(T2);
     myFile.print(F(";"));
 #endif
 
@@ -460,12 +476,6 @@ void performReadouts()
     T1Max = T1;
 #endif
 
-#ifdef TEMP2
-  T2 = temp2Filter.updateEstimate(calculateRawTemp(TEMP2));
-  if(T2 > T2Max)
-    T2Max = T2;
-#endif
-
 #ifdef GPS_BAUD
   if (numSV >= GPS_MIN_SAT)
   {
@@ -491,9 +501,34 @@ void performReadouts()
   if(PressureAltitude > MaxPressureAltitude)
     MaxPressureAltitude = PressureAltitude;
 #endif
+
+#ifdef ACS712
+  calculateCurrent();
+#endif
+
+#ifdef AIRSPEED
+  calculateAirSpeed();
+#endif
 }
 
-#if defined(TEMP1) || defined(TEMP2)
+#ifdef ACS712
+void calculateCurrent()
+{
+  currentSensorVoltage = (analogRead(currentPin) / 1023.0)*5000;
+  amps = (currentSensorVoltage-curretnSesnsorOffset)/mvPerAmp;
+  if(MaxCurrent < amps)
+    MaxCurrent = amps;
+}
+#endif
+
+#ifdef AIRSPEED
+  void calculateAirSpeed()
+  {
+    
+  }
+#endif
+
+#ifdef TEMP1
 float calculateRawTemp(int port)
 {
     int readVal = analogRead(port);
