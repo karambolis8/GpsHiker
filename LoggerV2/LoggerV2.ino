@@ -84,7 +84,15 @@
 #endif
 
 #ifdef AIRSPEED
+  #include <SimpleKalmanFilter.h>
   
+  float rho = 1.204; // density of air   
+  int zeroSpan = 2;
+  int offset = 0;
+  int offsetSize = 10;
+  int airSpeedPin = 7;
+  int airSpeed, maxAirSpeed = 0;
+  SimpleKalmanFilter airSpeedFilter(0.03, 0.003, 0.03); 
 #endif
 
 bool buttonPressed = false;
@@ -106,6 +114,10 @@ void setup()
 
 #ifdef BME280
   initBme();
+#endif
+
+#ifdef AIRSPEED
+  setupAirSpeed(airSpeedPin);
 #endif
 
   initButton();
@@ -288,7 +300,12 @@ void displayCurrentReadouts()
 #endif
 
 #ifdef AIRSPEED
-  u8x8.setCursor(0,7);
+  u8x8.setCursor(9,7);
+  if(airSpeed <= 99)
+      u8x8.print(FS(space));
+  if(airSpeed <= 9)
+      u8x8.print(FS(space));
+  u8x8.print(airSpeed);
 #endif
 }
 
@@ -324,6 +341,13 @@ void displayCurrentReadoutsLayout()
   u8x8.print(F("Amps:"));
   u8x8.setCursor(9,6);
   u8x8.print(F("A"));
+#endif
+
+#ifdef AIRSPEED
+  u8x8.setCursor(0,7);
+  u8x8.print(F("AirSpeed:"));
+  u8x8.setCursor(12,7);
+  u8x8.print(F("m/s"));
 #endif
 }
 
@@ -384,6 +408,15 @@ void displayStatistics()
       u8x8.print(FS(space));
   u8x8.print(String(MaxCurrent, 1));
 #endif
+
+#ifdef AIRSPEED
+  u8x8.setCursor(8,7);
+  if(maxAirSpeed <= 99)
+      u8x8.print(FS(space));
+  if(maxAirSpeed <= 9)
+      u8x8.print(FS(space));
+  u8x8.print(maxAirSpeed);
+#endif
 }
 
 #ifdef OLED
@@ -426,6 +459,13 @@ void displayStatisticsLayout()
   u8x8.setCursor(13,6);
   u8x8.print(F("A"));
 #endif
+
+#ifdef AIRSPEED
+  u8x8.setCursor(0,7);
+  u8x8.print(F("Max Air:"));
+  u8x8.setCursor(11,7);
+  u8x8.print(F("m/s"));
+#endif
 }
 #endif
 
@@ -465,7 +505,7 @@ void displayMaxTemp()
 void displayMaxTempLayout()
 {
   u8x8.setCursor(0, 4);
-  u8x8.print(F("Temp max:"));
+  u8x8.print(F("Max Tempfa:"));
   u8x8.setCursor(13, 4); 
   u8x8.print(F("C"));
 }
@@ -585,7 +625,9 @@ void performReadouts()
 #endif
 
 #ifdef AIRSPEED
-  calculateAirSpeed();
+  airSpeed = airSpeedFilter.updateEstimate(calculateRawAirSpeed(airSpeedPin));
+  if(airSpeed > maxAirSpeed)
+    maxAirSpeed = airSpeed;
 #endif
 }
 
@@ -602,14 +644,34 @@ void calculateCurrent()
 #endif
 
 #ifdef AIRSPEED
-  void calculateAirSpeed()
+  void setupAirSpeed(int port)
+  {    
+    for (int ii=0;ii<offsetSize;ii++){
+      offset += analogRead(port)-(1023/2);
+    }
+    offset /= offsetSize;
+  }
+
+  float calculateRawAirSpeed(int port)
   {
-    
+    int rawSensor = analogRead(port) - offset;
+    if(rawSensor > 512 - zeroSpan && rawSensor < 512 + zeroSpan) { }
+    else
+    {
+      if (rawSensor < 512)
+      {
+        return -sqrt((-10000.0*((rawSensor/1023.0)-0.5))/rho);
+      } 
+      else
+      {
+        return sqrt((10000.0*((rawSensor/1023.0)-0.5))/rho);
+      }
+    }
   }
 #endif
 
 #ifdef TEMP1
-float calculateRawTemp(int port)
+int calculateRawTemp(int port)
 {
     int readVal = analogRead(port);
     float volt = readVal * 5.0 / 1024.0;
