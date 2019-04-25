@@ -35,4 +35,4 @@
 //Analog A6
 #define CURRENT_SENSOR
 #define ACS758_50B
-////#define ACS712_20B
+//#define ACS712_20B

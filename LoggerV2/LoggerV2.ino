@@ -48,6 +48,8 @@ const float VccReference = 4.550;
 
   const char clearLine[] PROGMEM = { "                " };
   const char space[] PROGMEM = { " " };
+
+  bool blink = true;
 #endif
 
 #ifdef SD_CARD
@@ -252,6 +254,13 @@ void updateScreen()
 
   if(buttonPressed)
     displayStats = not displayStats;
+
+  u8x8.setCursor(15,7);
+  if(blink)
+    u8x8.print(".");
+  else
+    u8x8.print(" ");
+  blink = not blink;
 }
 
 void printWaitingLayout()
@@ -314,7 +323,7 @@ void displayCurrentReadouts()
 #endif
 
 #ifdef AIRSPEED
-  u8x8.setCursor(7,7);
+  u8x8.setCursor(7,4);
   if(airSpeed >= 0)
       u8x8.print(FS(space));
   if(abs(airSpeed) <= 99)
@@ -361,9 +370,9 @@ void displayCurrentReadoutsLayout()
 #endif
 
 #ifdef AIRSPEED
-  u8x8.setCursor(0,7);
+  u8x8.setCursor(0,4);
   u8x8.print(F("AirSpd:"));
-  u8x8.setCursor(11,7);
+  u8x8.setCursor(11,4);
   u8x8.print(F("km/h"));
 #endif
 }
@@ -427,7 +436,7 @@ void displayStatistics()
 #endif
 
 #ifdef AIRSPEED
-  u8x8.setCursor(8,7);
+  u8x8.setCursor(8,4);
   if(maxAirSpeed >= 0)
       u8x8.print(FS(space));
   if(abs(maxAirSpeed) <= 99)
@@ -480,9 +489,9 @@ void displayStatisticsLayout()
 #endif
 
 #ifdef AIRSPEED
-  u8x8.setCursor(0,7);
+  u8x8.setCursor(0,4);
   u8x8.print(F("Max Air:"));
-  u8x8.setCursor(12,7);
+  u8x8.setCursor(12,4);
   u8x8.print(F("km/h"));
 #endif
 }
@@ -491,7 +500,7 @@ void displayStatisticsLayout()
 #ifdef TEMP
 void displayCurrentTemp()
 {
-  u8x8.setCursor(5, 4);  
+  u8x8.setCursor(5, 7);  
   if((T1 <= 99 && T1 > 0) || (T1 < 0 && abs(T1) <= 9))
     u8x8.print(FS(space));
   if(T1 > 0 && T1 <= 9)
@@ -501,15 +510,15 @@ void displayCurrentTemp()
 
 void displayCurrentTempLayout()
 {
-  u8x8.setCursor(0, 4);
+  u8x8.setCursor(0, 7);
   u8x8.print(F("Temp:"));
-  u8x8.setCursor(8, 4);  
+  u8x8.setCursor(8, 7);  
   u8x8.print(F("C"));
 }
 
 void displayMaxTemp()
 {
-  u8x8.setCursor(9, 4);
+  u8x8.setCursor(9, 7);
   if((T1Max <= 99 && T1Max > 0) || (T1Max < 0 && abs(T1Max) <= 9))
     u8x8.print(FS(space));
   if(T1Max > 0 && T1Max <= 9)
@@ -519,9 +528,9 @@ void displayMaxTemp()
 
 void displayMaxTempLayout()
 {
-  u8x8.setCursor(0, 4);
+  u8x8.setCursor(0, 7);
   u8x8.print(F("Max Temp:"));
-  u8x8.setCursor(12, 4); 
+  u8x8.setCursor(12, 7); 
   u8x8.print(F("C"));
 }
 #endif
