@@ -155,7 +155,15 @@ void initBme()
 {
   bme.begin();
   //at init read pressure at gnd level
+  //sprawdzić adres I2C i dodać rezystory
   gndPressure = 1013.25;
+}
+
+void calculatePressAlt()
+{
+  PressureAltitude = bme.readAltitude(gndPressure);
+  if(PressureAltitude > MaxPressureAltitude)
+    MaxPressureAltitude = PressureAltitude;
 }
 #endif
 
@@ -163,7 +171,7 @@ void loop()
 {  
   unsigned long now = millis();
 #ifdef OLED
-  if ( now - lastScreenUpdate < LCD_REFRESH ) {
+  if ( now - lastScreenUpdate < OLED_REFRESH ) {
     doScreenUpdate = false;
   } else {
     doScreenUpdate = true;
@@ -636,9 +644,7 @@ void performReadouts()
 #endif
 
 #ifdef BME280
-  PressureAltitude = bme.readAltitude(gndPressure);
-  if(PressureAltitude > MaxPressureAltitude)
-    MaxPressureAltitude = PressureAltitude;
+  calculatePressAlt();
 #endif
 
 #ifdef CURRENT_SENSOR

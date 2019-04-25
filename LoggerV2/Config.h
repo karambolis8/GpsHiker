@@ -1,5 +1,4 @@
 
-#define LCD_REFRESH 1000
 
 #define BUTTON_INPUT 9
 #define BUTTON_DELAY 200
@@ -12,6 +11,7 @@
 
 //I2C
 #define OLED
+#define OLED_REFRESH 500
 
 //SPI
 //#define SD_CARD
