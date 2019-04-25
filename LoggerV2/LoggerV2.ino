@@ -19,6 +19,9 @@ const int VccReference = 5000;
   #ifndef NMEAGPS_PARSE_SATELLITE_INFO
     #error You must define NMEAGPS_PARSE_SATELLITE_INFO in NMEAGPS_cfg.h!
   #endif
+  
+  #include <SimpleKalmanFilter.h>
+  SimpleKalmanFilter gpsAltitudeFilter(0.03, 0.003, 0.03); 
 
   NMEAGPS  gps;
   gps_fix  fix;
@@ -28,11 +31,7 @@ const int VccReference = 5000;
   long MaxSpeed = 0;
   int Height = 0;
   int MaxHeight, ZeroHeight = 0;
-  int numSV = 0;
-  
-  #include <SimpleKalmanFilter.h>
-  SimpleKalmanFilter gpsAltitudeFilter(0.03, 0.003, 0.03); 
-  
+  int numSV = 0;  
 #endif
 
 #ifdef OLED
@@ -55,6 +54,7 @@ const int VccReference = 5000;
 #ifdef SD_CARD
   #include <SPI.h>
   #include <SD.h>
+  
   int pinCS = 8;
   unsigned long lastSdWrite = 0;
   File myFile;
@@ -73,17 +73,22 @@ const int VccReference = 5000;
 #ifdef TEMP
   #include <SimpleKalmanFilter.h>  
   SimpleKalmanFilter temp1Filter(0.03, 0.003, 0.03);
+  
   int T1, T1Max = 0;
   int tempPin = 0;
 #endif
 
 #ifdef CURRENT_SENSOR
+  #include <SimpleKalmanFilter.h>
+  SimpleKalmanFilter currentFilter(0.03, 0.003, 0.03); 
+  
 #ifdef ACS758_50B
   int mvPerAmp = 40;
 #endif
 #ifdef ACS712_20B
   int mvPerAmp = 100;
 #endif
+
   int currentPin = 6;
   double currentSensorVoltage = 0;
   double MaxCurrent, amps = 0;
@@ -91,6 +96,7 @@ const int VccReference = 5000;
 
 #ifdef AIRSPEED
   #include <SimpleKalmanFilter.h>
+  SimpleKalmanFilter airSpeedFilter(0.03, 0.003, 0.03); 
   
   float rho = 1.204; // density of air   
   int zeroSpan = 2;
@@ -98,7 +104,6 @@ const int VccReference = 5000;
   int offsetSize = 10;
   int airSpeedPin = 7;
   int airSpeed, maxAirSpeed = 0;
-  SimpleKalmanFilter airSpeedFilter(0.03, 0.003, 0.03); 
 #endif
 
 bool buttonPressed = false;
@@ -128,21 +133,6 @@ void setup()
 
   initButton();
 }
-
-#ifdef SD_CARD
-void initSDCard()
-{
-  pinMode(pinCS, OUTPUT);
-  SD.begin(pinCS);
-}
-#endif
-
-#ifdef GPS_BAUD
-void initGPS()
-{
-  gpsPort.begin(GPS_BAUD);
-}
-#endif
 
 #ifdef OLED
 void initOled()
@@ -528,6 +518,12 @@ void clearLines(int startingLine)
 #endif
 
 #ifdef SD_CARD
+void initSDCard()
+{
+  pinMode(pinCS, OUTPUT);
+  SD.begin(pinCS);
+}
+
 void logToSD()
 {
   //filename from gps https://github.com/SlashDevin/NeoGPS/blob/master/extras/doc/Data%20Model.md#usage
@@ -559,6 +555,12 @@ void logToSD()
 #endif
 
 #ifdef GPS_BAUD
+
+void initGPS()
+{
+  gpsPort.begin(GPS_BAUD);
+}
+
 void readGPS()
 {
   while (gps.available( gpsPort )) 
@@ -585,6 +587,27 @@ void readGPS()
     }
   }
 }
+
+  void calculateGps()
+  {
+	  if (numSV >= GPS_MIN_SAT)
+	  {
+		if (Speed > MaxSpeed)
+		{
+		  MaxSpeed = Speed;
+		}
+		
+		if(Height > 0 && zeroingCounter > 0)
+		{
+		  ZeroHeight = Height;
+		}
+		
+		if (Height > MaxHeight && zeroingCounter <= 0)
+		{
+		  MaxHeight = Height;
+		}
+	  }
+  }
 #endif
 
 void readButtonPressed()
@@ -595,29 +618,11 @@ void readButtonPressed()
 void performReadouts()
 {
 #ifdef TEMP
-  T1 = temp1Filter.updateEstimate(calculateRawTemp(tempPin));
-  if(T1 > T1Max)
-    T1Max = T1;
+  calculateTemp();
 #endif
 
 #ifdef GPS_BAUD
-  if (numSV >= GPS_MIN_SAT)
-  {
-    if (Speed > MaxSpeed)
-    {
-      MaxSpeed = Speed;
-    }
-    
-    if(Height > 0 && zeroingCounter > 0)
-    {
-      ZeroHeight = Height;
-    }
-    
-    if (Height > MaxHeight && zeroingCounter <= 0)
-    {
-      MaxHeight = Height;
-    }
-  }
+  calculateGps();
 #endif
 
 #ifdef BME280
@@ -631,9 +636,7 @@ void performReadouts()
 #endif
 
 #ifdef AIRSPEED
-  airSpeed = airSpeedFilter.updateEstimate(calculateRawAirSpeed(airSpeedPin));
-  if(airSpeed > maxAirSpeed)
-    maxAirSpeed = airSpeed;
+  calculateAirSpeed();
 #endif
 }
 
@@ -642,9 +645,13 @@ void calculateCurrent()
 {
   currentSensorVoltage = (analogRead(currentPin) / 1023.0)*VccReference;
   //add logic with -512 +- zeroSpan
-  amps = (currentSensorVoltage-VccReference/2)/mvPerAmp;
-  if(amps < 0)
-    amps = 0;
+  float sensorAmps = (currentSensorVoltage-VccReference/2)/mvPerAmp;
+  
+  if(sensorAmps < 0)
+    sensorAmps = 0.0;
+
+  amps = currentFilter.updateEstimate(sensorAmps);
+
   if(MaxCurrent < amps)
     MaxCurrent = amps;
 }
@@ -657,6 +664,13 @@ void calculateCurrent()
       offset += analogRead(port)-(1023/2);
     }
     offset /= offsetSize;
+  }
+  
+  void calculateAirSpeed()
+  {	  
+    airSpeed = airSpeedFilter.updateEstimate(calculateRawAirSpeed(airSpeedPin));
+    if(airSpeed > maxAirSpeed)
+      maxAirSpeed = airSpeed;
   }
 
   float calculateRawAirSpeed(int port)
@@ -680,6 +694,14 @@ void calculateCurrent()
   }
 #endif
 
+#ifdef TEMP
+void calculateTemp()
+{
+  T1 = temp1Filter.updateEstimate(calculateRawTemp(tempPin));
+  if(T1 > T1Max)
+    T1Max = T1;
+}
+
 #ifdef LM35
 int calculateRawTemp(int port)
 {
@@ -696,4 +718,5 @@ int calculateRawTemp(int port)
     float volt = readVal * VccReference / 1024.0 / 1000;
     return (volt - VccReference/20000) * 100;
 }
+#endif
 #endif
