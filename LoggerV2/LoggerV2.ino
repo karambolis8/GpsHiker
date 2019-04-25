@@ -61,12 +61,15 @@ const int VccReference = 5000;
 #endif
 
 #ifdef BME280
-  ss//https://github.com/finitespace/BME280
+  //https://github.com/finitespace/BME280
   #include <Adafruit_Sensor.h>
   #include <Adafruit_BME280.h>
+  
+  #include <SimpleKalmanFilter.h>
+  SimpleKalmanFilter pressAltFilter(0.03, 0.003, 0.03);
 
   Adafruit_BME280 bme;
-  float PressureAltitude, MaxPressureAltitude = 0;
+  int PressureAltitude, MaxPressureAltitude = 0;
   float gndPressure = 0;
 #endif
 
@@ -157,11 +160,15 @@ void initBme()
   //at init read pressure at gnd level
   //sprawdzić adres I2C i dodać rezystory
   gndPressure = 1013.25;
+  //w petli 10 razy i usredniony. stałe tak samo jak w airspeed
 }
 
 void calculatePressAlt()
 {
-  PressureAltitude = bme.readAltitude(gndPressure);
+  int bmeSensorRaw = bme.readAltitude(gndPressure);
+  if(bmeSensorRaw < 0)
+	bmeSensorRaw = 0;
+  PressureAltitude = pressAltFilter.updateEstimate(bmeSensorRaw);
   if(PressureAltitude > MaxPressureAltitude)
     MaxPressureAltitude = PressureAltitude;
 }
@@ -293,8 +300,8 @@ void displayCurrentReadouts()
 #endif
 
 #ifdef BME280
-  u8x8.setCursor(0,5);
-  u8x8.print(F("Press Alt:"));
+  u8x8.setCursor(9,5);
+  u8x8.print(PressureAltitude);
 #endif
 
 #ifdef CURRENT_SENSOR
@@ -315,8 +322,7 @@ void displayCurrentReadouts()
 }
 
 void displayCurrentReadoutsLayout()
-{
-      
+{    
 #ifdef GPS_BAUD
   u8x8.setCursor(0, 1);
   u8x8.print(F("Sats:"));
@@ -338,7 +344,9 @@ void displayCurrentReadoutsLayout()
 
 #ifdef BME280
   u8x8.setCursor(0,5);
-  u8x8.print(F("Press Alt:"));
+  u8x8.print(F("Bar Alt:"));
+  u8x8.setCursor(11,5);
+  u8x8.print(F("m"));
 #endif
 
 #ifdef CURRENT_SENSOR
@@ -403,8 +411,8 @@ void displayStatistics()
 #endif
 
 #ifdef BME280
-  u8x8.setCursor(0,5);
-  u8x8.print(F("Max press Alt:"));
+  u8x8.setCursor(13,5);
+  u8x8.print(MaxPressureAltitude);
 #endif
 
 #ifdef CURRENT_SENSOR
@@ -455,7 +463,7 @@ void displayStatisticsLayout()
 
 #ifdef BME280
   u8x8.setCursor(0,5);
-  u8x8.print(F("Max press Alt:"));
+  u8x8.print(F("Max bar Alt:"));
 #endif
 
 #ifdef CURRENT_SENSOR
