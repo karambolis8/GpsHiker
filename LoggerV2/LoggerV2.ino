@@ -2,6 +2,8 @@
 
 #include "Config.h"
 
+const int VccReference = 5000;
+
 #ifdef GPS_BAUD
   #include "NMEAGPS.h"
   #include "GPSport.h"
@@ -75,10 +77,14 @@
   int tempPin = 0;
 #endif
 
-#ifdef ACS712
-  int currentPin = 2;
+#ifdef CURRENT_SENSOR
+#ifdef ACS758_50B
   int mvPerAmp = 40;
-  int curretnSesnsorOffset = 2500;
+#endif
+#ifdef ACS712_20B
+  int mvPerAmp = 100;
+#endif
+  int currentPin = 2;
   double currentSensorVoltage = 0;
   double MaxCurrent, amps = 0;
 #endif
@@ -292,7 +298,7 @@ void displayCurrentReadouts()
   u8x8.print(F("Press Alt:"));
 #endif
 
-#ifdef ACS712
+#ifdef CURRENT_SENSOR
   u8x8.setCursor(5,6);
   if(amps <= 10)
       u8x8.print(FS(space));
@@ -336,7 +342,7 @@ void displayCurrentReadoutsLayout()
   u8x8.print(F("Press Alt:"));
 #endif
 
-#ifdef ACS712
+#ifdef CURRENT_SENSOR
   u8x8.setCursor(0,6);
   u8x8.print(F("Amps:"));
   u8x8.setCursor(9,6);
@@ -402,7 +408,7 @@ void displayStatistics()
   u8x8.print(F("Max press Alt:"));
 #endif
 
-#ifdef ACS712
+#ifdef CURRENT_SENSOR
   u8x8.setCursor(9,6);
   if(MaxCurrent <= 10)
       u8x8.print(FS(space));
@@ -453,7 +459,7 @@ void displayStatisticsLayout()
   u8x8.print(F("Max press Alt:"));
 #endif
 
-#ifdef ACS712
+#ifdef CURRENT_SENSOR
   u8x8.setCursor(0,6);
   u8x8.print(F("Max Amps:"));
   u8x8.setCursor(13,6);
@@ -620,7 +626,7 @@ void performReadouts()
     MaxPressureAltitude = PressureAltitude;
 #endif
 
-#ifdef ACS712
+#ifdef CURRENT_SENSOR
   calculateCurrent();
 #endif
 
@@ -631,11 +637,12 @@ void performReadouts()
 #endif
 }
 
-#ifdef ACS712
+#ifdef CURRENT_SENSOR
 void calculateCurrent()
 {
-  currentSensorVoltage = (analogRead(currentPin) / 1023.0)*5000;
-  amps = (currentSensorVoltage-curretnSesnsorOffset)/mvPerAmp;
+  currentSensorVoltage = (analogRead(currentPin) / 1023.0)*VccReference;
+  //add logic with -512 +- zeroSpan
+  amps = (currentSensorVoltage-VccReference/2)/mvPerAmp;
   if(amps < 0)
     amps = 0;
   if(MaxCurrent < amps)
@@ -655,26 +662,38 @@ void calculateCurrent()
   float calculateRawAirSpeed(int port)
   {
     int rawSensor = analogRead(port) - offset;
-    if(rawSensor > 512 - zeroSpan && rawSensor < 512 + zeroSpan) { }
+    if(rawSensor > 512 - zeroSpan && rawSensor < 512 + zeroSpan) 
+	{
+	  return 0.0;	
+    }
     else
     {
       if (rawSensor < 512)
       {
-        return -sqrt((-10000.0*((rawSensor/1023.0)-0.5))/rho);
+        return -sqrt((-10000.0*((rawSensor/1023.0)-VccReference/20000))/rho);
       } 
       else
       {
-        return sqrt((10000.0*((rawSensor/1023.0)-0.5))/rho);
+        return sqrt((10000.0*((rawSensor/1023.0)-VccReference/20000))/rho);
       }
     }
   }
 #endif
 
-#ifdef TEMP1
+#ifdef LM35
 int calculateRawTemp(int port)
 {
     int readVal = analogRead(port);
-    float volt = readVal * 5.0 / 1024.0;
-    return (volt - 0.5) * 100;
+    float volt = readVal * VccReference / 1024.0 / 1000;
+    return volt * 100;
+}
+#endif
+
+#ifdef TMP36
+int calculateRawTemp(int port)
+{
+    int readVal = analogRead(port);
+    float volt = readVal * VccReference / 1024.0 / 1000;
+    return (volt - VccReference/20000) * 100;
 }
 #endif
