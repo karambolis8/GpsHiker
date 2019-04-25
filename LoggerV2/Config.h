@@ -19,6 +19,8 @@
 
 //Analog A1,A2,A3
 //#define GY61
+//I2C
+//#define MPU6050
 
 //Analog A0
 #define TEMP
