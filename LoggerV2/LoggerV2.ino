@@ -665,9 +665,9 @@ void performReadouts()
 #ifdef CURRENT_SENSOR
 void calculateCurrent()
 {
-  currentSensorVoltage = (analogRead(currentPin) / 1023.0)*VccReference*1000.0;
+  currentSensorVoltage = (analogRead(currentPin) / 1024.0) * VccReference;
   //add logic with -512 +- zeroSpan
-  float sensorAmps = (currentSensorVoltage-VccReference/2)/mvPerAmp;
+  float sensorAmps = (currentSensorVoltage - VccReference/2) / mvPerAmp;
   
   if(sensorAmps < 0)
     sensorAmps = 0.0;

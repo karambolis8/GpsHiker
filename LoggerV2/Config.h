@@ -23,9 +23,9 @@
 //#define MPU6050
 
 //Analog A0
-#define TEMP
-//#define LM35
-#define TMP36
+//#define TEMP
+////#define LM35
+//#define TMP36
 
 //Analog A7
 //#define AIRSPEED
@@ -34,6 +34,6 @@
 //#define BME280
 
 //Analog A6
-//#define CURRENT_SENSOR
-//#define ACS758_50B
+#define CURRENT_SENSOR
+#define ACS758_50B
 //#define ACS712_20B
