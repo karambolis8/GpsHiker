@@ -312,10 +312,12 @@ void displayCurrentReadouts()
 #endif
 
 #ifdef AIRSPEED
-  u8x8.setCursor(9,7);
-  if(airSpeed <= 99)
+  u8x8.setCursor(7,7);
+  if(airSpeed >= 0)
       u8x8.print(FS(space));
-  if(airSpeed <= 9)
+  if(abs(airSpeed) <= 99)
+      u8x8.print(FS(space));
+  if(abs(airSpeed) <= 9)
       u8x8.print(FS(space));
   u8x8.print(airSpeed);
 #endif
@@ -358,9 +360,9 @@ void displayCurrentReadoutsLayout()
 
 #ifdef AIRSPEED
   u8x8.setCursor(0,7);
-  u8x8.print(F("AirSpeed:"));
-  u8x8.setCursor(12,7);
-  u8x8.print(F("m/s"));
+  u8x8.print(F("AirSpd:"));
+  u8x8.setCursor(11,7);
+  u8x8.print(F("km/h"));
 #endif
 }
 
@@ -424,9 +426,11 @@ void displayStatistics()
 
 #ifdef AIRSPEED
   u8x8.setCursor(8,7);
-  if(maxAirSpeed <= 99)
+  if(maxAirSpeed >= 0)
       u8x8.print(FS(space));
-  if(maxAirSpeed <= 9)
+  if(abs(maxAirSpeed) <= 99)
+      u8x8.print(FS(space));
+  if(abs(maxAirSpeed) <= 9)
       u8x8.print(FS(space));
   u8x8.print(maxAirSpeed);
 #endif
@@ -476,8 +480,8 @@ void displayStatisticsLayout()
 #ifdef AIRSPEED
   u8x8.setCursor(0,7);
   u8x8.print(F("Max Air:"));
-  u8x8.setCursor(11,7);
-  u8x8.print(F("m/s"));
+  u8x8.setCursor(12,7);
+  u8x8.print(F("km/h"));
 #endif
 }
 #endif
@@ -680,40 +684,40 @@ void calculateCurrent()
 #endif
 
 #ifdef AIRSPEED
-  void setupAirSpeed(int port)
-  {    
-    for (int ii=0;ii<offsetSize;ii++){
-      offset += analogRead(port)-(1023/2);
-    }
-    offset /= offsetSize;
+void setupAirSpeed(int port)
+{    
+  for (int ii=0;ii<offsetSize;ii++){
+    offset += analogRead(port)-(1023/2);
   }
-  
-  void calculateAirSpeed()
-  {	  
-    airSpeed = airSpeedFilter.updateEstimate(calculateRawAirSpeed(airSpeedPin));
-    if(airSpeed > maxAirSpeed)
-      maxAirSpeed = airSpeed;
-  }
+  offset /= offsetSize;
+}
 
-  float calculateRawAirSpeed(int port)
+void calculateAirSpeed()
+{	  
+  airSpeed = airSpeedFilter.updateEstimate(calculateRawAirSpeed(airSpeedPin));
+  if(airSpeed > maxAirSpeed)
+    maxAirSpeed = airSpeed;
+}
+
+float calculateRawAirSpeed(int port)
+{
+  int rawSensor = analogRead(port) - offset;
+  if(rawSensor > 512 - zeroSpan && rawSensor < 512 + zeroSpan) 
   {
-    int rawSensor = analogRead(port) - offset;
-    if(rawSensor > 512 - zeroSpan && rawSensor < 512 + zeroSpan) 
-	{
-	  //return 0.0;	
-    }
+    return 0.0;	
+  }
+  else
+  {
+    if (rawSensor < 512)
+    {
+      return (-sqrt((-10000.0*((rawSensor/1024.0)-0.5))/rho)) * 36.0 / 10.0;
+    } 
     else
     {
-      if (rawSensor < 512)
-      {
-        return -sqrt((-10000.0*((rawSensor/1023.0)-VccReference/20000))/rho);
-      } 
-      else
-      {
-        return sqrt((10000.0*((rawSensor/1023.0)-VccReference/20000))/rho);
-      }
+      return sqrt((10000.0*((rawSensor/1024.0)-0.5))/rho)  * 36.0 / 10.0;
     }
   }
+}
 #endif
 
 #ifdef TEMP
