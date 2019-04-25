@@ -1,5 +1,4 @@
 
-
 #define BUTTON_INPUT 9
 #define BUTTON_DELAY 200
 
@@ -31,7 +30,7 @@
 #define AIRSPEED
 
 //I2C
-//#define BME280
+#define BME280
 
 //Analog A6
 #define CURRENT_SENSOR

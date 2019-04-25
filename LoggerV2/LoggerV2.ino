@@ -1,4 +1,3 @@
-//https://electronics.stackexchange.com/questions/25278/how-to-connect-multiple-i2c-interface-devices-into-a-single-pin-a4-sda-and-a5
 
 #include "Config.h"
 
@@ -61,15 +60,15 @@ const float VccReference = 4.550;
 #endif
 
 #ifdef BME280
-  //https://github.com/finitespace/BME280
-  #include <Adafruit_Sensor.h>
-  #include <Adafruit_BME280.h>
+  //#include <Arduino.h>
+  #include <Wire.h>  
+  #include <BMx280MI.h>
   
   #include <SimpleKalmanFilter.h>
   SimpleKalmanFilter pressAltFilter(0.03, 0.003, 0.03);
 
-  Adafruit_BME280 bme;
-  int PressureAltitude, MaxPressureAltitude = 0;
+  BMx280I2C bmx280(0x76);
+  float PressureAltitude, MaxPressureAltitude = 0;
   float gndPressure = 0;
 #endif
 
@@ -156,19 +155,22 @@ void initButton()
 #ifdef BME280
 void initBme()
 {
-  bme.begin();
-  //at init read pressure at gnd level
-  //sprawdzić adres I2C i dodać rezystory
-  gndPressure = 1013.25;
-  //w petli 10 razy i usredniony. stałe tak samo jak w airspeed
+  bmx280.begin();
+  bmx280.resetToDefaults();
+  bmx280.writeOversamplingPressure(BMx280MI::OSRS_P_x16);
 }
 
 void calculatePressAlt()
 {
-  int bmeSensorRaw = bme.readAltitude(gndPressure);
+  bmx280.measure();
+  while (!bmx280.hasValue());  
+  
+  float bmeSensorRaw = bmx280.getPressure();
   if(bmeSensorRaw < 0)
-	bmeSensorRaw = 0;
+	  bmeSensorRaw = 0;
+   
   PressureAltitude = pressAltFilter.updateEstimate(bmeSensorRaw);
+  
   if(PressureAltitude > MaxPressureAltitude)
     MaxPressureAltitude = PressureAltitude;
 }
@@ -670,7 +672,7 @@ void performReadouts()
 void calculateCurrent()
 {
   currentSensorVoltage = (analogRead(currentPin) / 1024.0) * VccReference;
-  //add logic with -512 +- zeroSpan
+
   float sensorAmps = (currentSensorVoltage - VccReference/2) / mvPerAmp;
   
   if(sensorAmps < 0)
