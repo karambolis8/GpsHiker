@@ -70,7 +70,7 @@ const int VccReference = 5000;
   float gndPressure = 0;
 #endif
 
-#ifdef TEMP1
+#ifdef TEMP
   #include <SimpleKalmanFilter.h>  
   SimpleKalmanFilter temp1Filter(0.03, 0.003, 0.03);
   int T1, T1Max = 0;
@@ -84,7 +84,7 @@ const int VccReference = 5000;
 #ifdef ACS712_20B
   int mvPerAmp = 100;
 #endif
-  int currentPin = 2;
+  int currentPin = 6;
   double currentSensorVoltage = 0;
   double MaxCurrent, amps = 0;
 #endif
@@ -289,7 +289,7 @@ void displayCurrentReadouts()
   u8x8.print(F("m"));
 #endif
 
-#ifdef TEMP1
+#ifdef TEMP
   displayCurrentTemp();
 #endif
 
@@ -333,7 +333,7 @@ void displayCurrentReadoutsLayout()
   u8x8.print(F("m"));
 #endif
 
-#ifdef TEMP1
+#ifdef TEMP
   displayCurrentTempLayout();
 #endif
 
@@ -399,7 +399,7 @@ void displayStatistics()
   }
 #endif
 
-#ifdef TEMP1
+#ifdef TEMP
   displayMaxTemp();
 #endif
 
@@ -450,7 +450,7 @@ void displayStatisticsLayout()
   }
 #endif
 
-#ifdef TEMP1
+#ifdef TEMP
   displayMaxTempLayout();
 #endif
 
@@ -475,7 +475,7 @@ void displayStatisticsLayout()
 }
 #endif
 
-#ifdef TEMP1
+#ifdef TEMP
 void displayCurrentTemp()
 {
   u8x8.setCursor(5, 4);  
@@ -542,7 +542,7 @@ void logToSD()
     myFile.print(F(";"));
 #endif
 
-#ifdef TEMP1
+#ifdef TEMP
     myFile.print(T1);
     myFile.print(F(";"));
 #endif
@@ -594,7 +594,7 @@ void readButtonPressed()
 
 void performReadouts()
 {
-#ifdef TEMP1
+#ifdef TEMP
   T1 = temp1Filter.updateEstimate(calculateRawTemp(tempPin));
   if(T1 > T1Max)
     T1Max = T1;

@@ -17,11 +17,11 @@
 //#define SD_CARD
 //#define SD_LOG_TIME 1000
 
-//Analog
-//#define GY61 //A6,A3,A1
+//Analog A1,A2,A3
+//#define GY61
 
 //Analog A0
-#define TEMP1
+#define TEMP
 //#define LM35
 #define TMP36
 
@@ -31,7 +31,7 @@
 //I2C
 //#define BME280
 
-//Analog A2
+//Analog A6
 #define CURRENT_SENSOR
 #define ACS758_50B
 #define ACS712_20B
