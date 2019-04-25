@@ -2,7 +2,7 @@
 
 #include "Config.h"
 
-const int VccReference = 5000;
+const float VccReference = 4.550;
 
 #ifdef GPS_BAUD
   #include "NMEAGPS.h"
@@ -486,11 +486,9 @@ void displayStatisticsLayout()
 void displayCurrentTemp()
 {
   u8x8.setCursor(5, 4);  
-  if(T1 > 0)  
+  if((T1 <= 99 && T1 > 0) || (T1 < 0 && abs(T1) <= 9))
     u8x8.print(FS(space));
-  if(abs(T1) <= 99)
-    u8x8.print(FS(space));
-  if(abs(T1) <= 9)
+  if(T1 > 0 && T1 <= 9)
     u8x8.print(FS(space));
   u8x8.print(T1);
 }
@@ -499,18 +497,16 @@ void displayCurrentTempLayout()
 {
   u8x8.setCursor(0, 4);
   u8x8.print(F("Temp:"));
-  u8x8.setCursor(9, 4);  
+  u8x8.setCursor(8, 4);  
   u8x8.print(F("C"));
 }
 
 void displayMaxTemp()
 {
   u8x8.setCursor(9, 4);
-  if(T1Max > 0)  
+  if((T1Max <= 99 && T1Max > 0) || (T1Max < 0 && abs(T1Max) <= 9))
     u8x8.print(FS(space));
-  if(abs(T1Max) <= 99)
-    u8x8.print(FS(space));
-  if(abs(T1Max) <= 9)
+  if(T1Max > 0 && T1Max <= 9)
     u8x8.print(FS(space));
   u8x8.print(T1Max);
 }
@@ -519,7 +515,7 @@ void displayMaxTempLayout()
 {
   u8x8.setCursor(0, 4);
   u8x8.print(F("Max Temp:"));
-  u8x8.setCursor(13, 4); 
+  u8x8.setCursor(12, 4); 
   u8x8.print(F("C"));
 }
 #endif
@@ -605,40 +601,42 @@ void readGPS()
   }
 }
 
-  void calculateGps()
+void calculateGps()
+{
+  if (numSV >= GPS_MIN_SAT)
   {
-	  if (numSV >= GPS_MIN_SAT)
-	  {
-		if (Speed > MaxSpeed)
-		{
-		  MaxSpeed = Speed;
-		}
-		
-		if(Height > 0 && zeroingCounter > 0)
-		{
-		  ZeroHeight = Height;
-		}
-		
-		if (Height > MaxHeight && zeroingCounter <= 0)
-		{
-		  MaxHeight = Height;
-		}
-	  }
+    if (Speed > MaxSpeed)
+    {
+      MaxSpeed = Speed;
+    }
+    
+    if(Height > 0 && zeroingCounter > 0)
+    {
+      ZeroHeight = Height;
+    }
+    
+    if (Height > MaxHeight && zeroingCounter <= 0)
+    {
+      MaxHeight = Height;
+    }
   }
+}
 #endif
 
 void readButtonPressed()
 {
-  unsigned long now = millis();
-  if((digitalRead(BUTTON_INPUT) == 0) && now - buttonDebounce >= BUTTON_DELAY)
-  {
-	buttonPressed = true;
-	buttonDebounce = now;
-  }
-  else
-  {
-	  buttonPressed = false;
-  }	  
+  buttonPressed = (digitalRead(BUTTON_INPUT) == 0);
+  
+//  unsigned long now = millis();
+//  if((digitalRead(BUTTON_INPUT) == 0) && now - buttonDebounce >= BUTTON_DELAY)
+//  {
+//	buttonPressed = true;
+//	buttonDebounce = now;
+//  }
+//  else
+//  {
+//	  buttonPressed = false;
+//  }	  
 }
 
 void performReadouts()
@@ -667,7 +665,7 @@ void performReadouts()
 #ifdef CURRENT_SENSOR
 void calculateCurrent()
 {
-  currentSensorVoltage = (analogRead(currentPin) / 1023.0)*VccReference;
+  currentSensorVoltage = (analogRead(currentPin) / 1023.0)*VccReference*1000.0;
   //add logic with -512 +- zeroSpan
   float sensorAmps = (currentSensorVoltage-VccReference/2)/mvPerAmp;
   
@@ -702,7 +700,7 @@ void calculateCurrent()
     int rawSensor = analogRead(port) - offset;
     if(rawSensor > 512 - zeroSpan && rawSensor < 512 + zeroSpan) 
 	{
-	  return 0.0;	
+	  //return 0.0;	
     }
     else
     {
@@ -730,8 +728,8 @@ void calculateTemp()
 int calculateRawTemp(int port)
 {
     int readVal = analogRead(port);
-    float volt = readVal * VccReference / 1024.0 / 1000;
-    return volt * 100;
+    float volt = readVal * VccReference / 1024.0;
+    return volt * 100.0;
 }
 #endif
 
@@ -739,8 +737,8 @@ int calculateRawTemp(int port)
 int calculateRawTemp(int port)
 {
     int readVal = analogRead(port);
-    float volt = readVal * VccReference / 1024.0 / 1000;
-    return (volt - VccReference/20000) * 100;
+    float volt = readVal* VccReference / 1024.0 ;
+    return (volt - 0.5) * 100.0;
 }
 #endif
 #endif
