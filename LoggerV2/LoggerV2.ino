@@ -107,6 +107,7 @@ const int VccReference = 5000;
 #endif
 
 bool buttonPressed = false;
+unsigned long buttonDebounce = 0;
 
 void setup()
 {
@@ -612,7 +613,16 @@ void readGPS()
 
 void readButtonPressed()
 {
-  buttonPressed = (digitalRead(BUTTON_INPUT) == 0);
+  unsigned long now = millis();
+  if((digitalRead(BUTTON_INPUT) == 0) && now - buttonDebounce >= BUTTON_DELAY)
+  {
+	buttonPressed = true;
+	buttonDebounce = now;
+  }
+  else
+  {
+	  buttonPressed = false;
+  }	  
 }
 
 void performReadouts()

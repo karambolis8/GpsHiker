@@ -2,7 +2,7 @@
 #define LCD_REFRESH 1000
 
 #define BUTTON_INPUT 9
-#define BUTTON_DELAY 500
+#define BUTTON_DELAY 200
 
 //RX-TX
 #define GPS_BAUD 9600
