@@ -116,24 +116,40 @@ void setup()
 {
   Serial.begin(9600);
   
-#ifdef SD_CARD
-  initSDCard();
-#endif
-
-#ifdef GPS_BAUD
-  initGPS();
-#endif
-
 #ifdef OLED
   initOled();
   displayHeader();
 #endif
 
+#ifdef SD_CARD
+#ifdef OLED
+  u8x8.setCursor(0,1);
+  u8x8.print(F("Initializing SD"));
+#endif
+  initSDCard();
+#endif
+
+#ifdef GPS_BAUD
+#ifdef OLED
+  u8x8.setCursor(0,2);
+  u8x8.print(F("Initializing GPS"));
+#endif
+  initGPS();
+#endif
+
 #ifdef BME280
+#ifdef OLED
+  u8x8.setCursor(0,3);
+  u8x8.print(F("Initializing BME"));
+#endif
   initBme();
 #endif
 
 #ifdef AIRSPEED
+#ifdef OLED
+  u8x8.setCursor(0,4);
+  u8x8.print(F("Initializing Pitot"));
+#endif
   setupAirSpeed(airSpeedPin);
 #endif
 
