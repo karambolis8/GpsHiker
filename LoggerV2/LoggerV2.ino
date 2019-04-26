@@ -337,19 +337,24 @@ void displayCurrentReadouts()
   }
     
 #ifdef GPS_BAUD
-  u8x8.setCursor(0, 1);
-  u8x8.print(F("Sats:"));
-  u8x8.print(numSV);
+  u8x8.setCursor(5, 1);
+    if(numSV < 10)
+      u8x8.print(FS(space));
+    u8x8.print(numSV);
 
-  u8x8.setCursor(0, 2);
-  u8x8.print(F("Speed:"));
+  u8x8.setCursor(8, 2);
+  if(Speed <= 99)
+    u8x8.print(FS(space));
+  if(Speed <= 9)
+    u8x8.print(FS(space));
   u8x8.print(Speed);
-  u8x8.print(F("km/h"));
 
-  u8x8.setCursor(0, 3);
-  u8x8.print(F("GPS Alt:"));
+  u8x8.setCursor(8, 3);
+  if(Height <= 99)
+    u8x8.print(FS(space));
+  if(Height <= 9)
+    u8x8.print(FS(space));
   u8x8.print(Height);
-  u8x8.print(F("m"));
 #endif
 
 #ifdef TEMP
@@ -393,9 +398,9 @@ void displayCurrentReadoutsLayout()
   u8x8.print(F("Sats:"));
   
   u8x8.setCursor(0, 2);
-  u8x8.print(F("Speed:"));
-  u8x8.setCursor(9, 2);
-  u8x8.print(F("km/h"));
+  u8x8.print(F("GPS Spd:"));
+  u8x8.setCursor(12, 2);
+  u8x8.print(F("kmh"));
 
   u8x8.setCursor(0, 3);
   u8x8.print(F("GPS Alt:"));
@@ -440,7 +445,7 @@ void displayStatistics()
 
 #ifdef GPS_BAUD
   u8x8.setCursor(5, 1); 
-  if(numSV < 9)
+  if(numSV < 10)
     u8x8.print(FS(space));
   u8x8.print(numSV);
   
@@ -524,9 +529,7 @@ void displayStatisticsLayout()
   }
   else
   {      
-    u8x8.print(F("Max alt:"));
-    u8x8.setCursor(13, 3);
-    u8x8.println("m");
+    u8x8.print(F("Max GPS alt:"));
   }
 #endif
 
