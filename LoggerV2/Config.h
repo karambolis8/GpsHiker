@@ -11,6 +11,7 @@
 //I2C
 #define OLED
 #define OLED_REFRESH 500
+#define OLED_SENSOR_CALIBRATION_DELAY 500
 
 //SPI
 //#define SD_CARD

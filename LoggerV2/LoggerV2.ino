@@ -62,15 +62,17 @@ const float VccReference = 4.550;
 #endif
 
 #ifdef BME280
-  #include <Wire.h>  
-  #include <BMx280MI.h>
+  #include <Wire.h>
+  #include <Adafruit_Sensor.h>
+  #include <Adafruit_BME280.h>
   
   #include <SimpleKalmanFilter.h>
   SimpleKalmanFilter pressAltFilter(0.03, 0.003, 0.03);
 
-  BMx280I2C bmx280(0x76);
+  Adafruit_BME280 bme;
   int PressureAltitude, MaxPressureAltitude = 0;
   float gndLevelPressure = 0;
+  int avgSize = 10;
 #endif
 
 #ifdef TEMP
@@ -114,8 +116,6 @@ unsigned long buttonDebounce = 0;
 
 void setup()
 {
-  Serial.begin(9600);
-  
 #ifdef OLED
   initOled();
   displayHeader();
@@ -125,6 +125,7 @@ void setup()
 #ifdef OLED
   u8x8.setCursor(0,1);
   u8x8.print(F("Initializing SD"));
+  delay(OLED_SENSOR_CALIBRATION_DELAY);
 #endif
   initSDCard();
 #endif
@@ -133,6 +134,7 @@ void setup()
 #ifdef OLED
   u8x8.setCursor(0,2);
   u8x8.print(F("Initializing GPS"));
+  delay(OLED_SENSOR_CALIBRATION_DELAY);
 #endif
   initGPS();
 #endif
@@ -141,6 +143,7 @@ void setup()
 #ifdef OLED
   u8x8.setCursor(0,3);
   u8x8.print(F("Initializing BME"));
+  delay(OLED_SENSOR_CALIBRATION_DELAY);
 #endif
   initBme();
 #endif
@@ -148,7 +151,8 @@ void setup()
 #ifdef AIRSPEED
 #ifdef OLED
   u8x8.setCursor(0,4);
-  u8x8.print(F("Initializing Pitot"));
+  u8x8.print(F("Initializing AIR"));
+  delay(OLED_SENSOR_CALIBRATION_DELAY);
 #endif
   setupAirSpeed(airSpeedPin);
 #endif
@@ -174,48 +178,26 @@ void initButton()
 #ifdef BME280
 void initBme()
 {
-  bmx280.begin();
-  bmx280.resetToDefaults();
-  bmx280.writeOversamplingPressure(BMx280MI::OSRS_P_x16);
-  bmx280.writeOversamplingTemperature(BMx280MI::OSRS_T_x16);
+  bme.begin(0x76);
 
   float gndLeveLAverage = 0.0;
   
-  for(int i = 0; i < 10; i++)
+  for(int i = 0; i < avgSize; i++)
   {
-    bmx280.measure();
-    while (!bmx280.hasValue());
-    float sensorRawPressure = bmx280.getPressure();
+    float sensorRawPressure = bme.readPressure();
     if(isnan(sensorRawPressure))
       i -= 1;
     else
       gndLeveLAverage += sensorRawPressure;
-    delay(1000);
   }
   
-  gndLevelPressure = gndLeveLAverage / 10 * 0.01;
+  gndLevelPressure = gndLeveLAverage / avgSize * 0.01;
 }
 
 void calculatePressAlt()
 {
-  bmx280.measure();
-  while (!bmx280.hasValue());  
+  float alt = bme.readAltitude(gndLevelPressure);
   
-  float sensorRawPressure = bmx280.getPressure();
-  float sensorRawTemp = bmx280.getTemperature();
-
-  if(isnan(sensorRawPressure) || isnan(sensorRawTemp))
-    return;
-
-  Serial.println("getAltitude(sensorRawPressure * 0.01, gndLevelPressure, sensorRawTemp);");
-  Serial.print(sensorRawPressure * 0.01);
-  Serial.print(" ");
-  Serial.print(gndLevelPressure);
-  Serial.print(" ");
-  Serial.println(sensorRawTemp);
-  
-  float alt = getAltitude(sensorRawPressure * 0.01, gndLevelPressure, sensorRawTemp);
-
   if(isnan(alt))
     return;
 
@@ -226,17 +208,6 @@ void calculatePressAlt()
   
   if(PressureAltitude > MaxPressureAltitude)
     MaxPressureAltitude = PressureAltitude;
-}
-
-float getAltitude(float pressure, float referencePressure, float outdoorTemp)
-{
-  float altitude = NAN;
-  if (!isnan(pressure) && !isnan(referencePressure) && !isnan(outdoorTemp))
-  {
-      altitude = pow(referencePressure / pressure, 0.190234) - 1;
-      altitude *= ((outdoorTemp + 273.15) / 0.0065);
-  }
-  return altitude;
 }
 #endif
 
@@ -366,6 +337,8 @@ void displayCurrentReadouts()
   u8x8.print(Speed);
 
   u8x8.setCursor(8, 3);
+  if(Height <= 999)
+    u8x8.print(FS(space));
   if(Height <= 99)
     u8x8.print(FS(space));
   if(Height <= 9)
@@ -396,7 +369,7 @@ void displayCurrentReadouts()
 #endif
 
 #ifdef AIRSPEED
-  u8x8.setCursor(7,4);
+  u8x8.setCursor(8,4);
   if(airSpeed >= 0)
       u8x8.print(FS(space));
   if(abs(airSpeed) <= 99)
@@ -415,8 +388,8 @@ void displayCurrentReadoutsLayout()
   
   u8x8.setCursor(0, 2);
   u8x8.print(F("GPS Spd:"));
-  u8x8.setCursor(12, 2);
-  u8x8.print(F("kmh"));
+  u8x8.setCursor(11, 2);
+  u8x8.print(F("km/h"));
 
   u8x8.setCursor(0, 3);
   u8x8.print(F("GPS Alt:"));
@@ -444,8 +417,8 @@ void displayCurrentReadoutsLayout()
 
 #ifdef AIRSPEED
   u8x8.setCursor(0,4);
-  u8x8.print(F("AirSpd:"));
-  u8x8.setCursor(11,4);
+  u8x8.print(F("Air Spd:"));
+  u8x8.setCursor(12,4);
   u8x8.print(F("km/h"));
 #endif
 }
@@ -457,9 +430,15 @@ void displayStatistics()
     clearLines(1);
     displayStatisticsLayout();
     currentScreen = 2;
-  }  
+  }
 
 #ifdef GPS_BAUD
+ if(currentScreen == 2 && zeroingCounter == 0)
+ {
+    clearLines(1);
+    displayStatisticsLayout();  
+ }
+
   u8x8.setCursor(5, 1); 
   if(numSV < 10)
     u8x8.print(FS(space));
@@ -474,7 +453,7 @@ void displayStatistics()
     
   if(zeroingCounter > 0)
   {
-    u8x8.setCursor(11, 3);
+    u8x8.setCursor(12, 3);
     if(zeroingCounter <= 9)
       u8x8.print(FS(space));
     u8x8.print(zeroingCounter);
@@ -497,7 +476,7 @@ void displayStatistics()
 #endif
 
 #ifdef BME280
-  u8x8.setCursor(12,5);  
+  u8x8.setCursor(8,5);  
     if(PressureAltitude <= 999)
     u8x8.print(FS(space));
   if(PressureAltitude <= 99)
@@ -534,7 +513,7 @@ void displayStatisticsLayout()
   u8x8.print(F("Sats:"));
   
   u8x8.setCursor(0, 2);
-  u8x8.print(F("Max spd:"));
+  u8x8.print(F("Max GPS:"));
   u8x8.setCursor(11, 2);
   u8x8.print(F("km/h"));
   
@@ -544,8 +523,17 @@ void displayStatisticsLayout()
     u8x8.print(F("Zeroing alt"));
   }
   else
-  {      
-    u8x8.print(F("Max GPS alt:"));
+  {
+    Serial.println(zeroingCounter);
+    if(zeroingCounter == 0)
+    {
+      u8x8.print(FS(clearLine));
+      zeroingCounter -= 1; 
+    }
+    
+    u8x8.print(F("Max GPS:"));
+    u8x8.setCursor(12, 3);
+    u8x8.print(F("m"));
   }
 #endif
 
@@ -555,7 +543,9 @@ void displayStatisticsLayout()
 
 #ifdef BME280
   u8x8.setCursor(0,5);
-  u8x8.print(F("Max bar Alt:"));
+  u8x8.print(F("Max Bar:"));
+    u8x8.setCursor(12, 5);
+    u8x8.print(F("m"));
 #endif
 
 #ifdef CURRENT_SENSOR
