@@ -62,7 +62,6 @@ const float VccReference = 4.550;
 #endif
 
 #ifdef BME280
-  //#include <Arduino.h>
   #include <Wire.h>  
   #include <BMx280MI.h>
   
@@ -70,8 +69,8 @@ const float VccReference = 4.550;
   SimpleKalmanFilter pressAltFilter(0.03, 0.003, 0.03);
 
   BMx280I2C bmx280(0x76);
-  float PressureAltitude, MaxPressureAltitude = 0;
-  float gndPressure = 0;
+  int PressureAltitude, MaxPressureAltitude = 0;
+  float gndLevelPressure = 0;
 #endif
 
 #ifdef TEMP
@@ -115,6 +114,8 @@ unsigned long buttonDebounce = 0;
 
 void setup()
 {
+  Serial.begin(9600);
+  
 #ifdef SD_CARD
   initSDCard();
 #endif
@@ -160,6 +161,23 @@ void initBme()
   bmx280.begin();
   bmx280.resetToDefaults();
   bmx280.writeOversamplingPressure(BMx280MI::OSRS_P_x16);
+  bmx280.writeOversamplingTemperature(BMx280MI::OSRS_T_x16);
+
+  float gndLeveLAverage = 0.0;
+  
+  for(int i = 0; i < 10; i++)
+  {
+    bmx280.measure();
+    while (!bmx280.hasValue());
+    float sensorRawPressure = bmx280.getPressure();
+    if(isnan(sensorRawPressure))
+      i -= 1;
+    else
+      gndLeveLAverage += sensorRawPressure;
+    delay(1000);
+  }
+  
+  gndLevelPressure = gndLeveLAverage / 10 * 0.01;
 }
 
 void calculatePressAlt()
@@ -167,14 +185,42 @@ void calculatePressAlt()
   bmx280.measure();
   while (!bmx280.hasValue());  
   
-  float bmeSensorRaw = bmx280.getPressure();
-  if(bmeSensorRaw < 0)
-	  bmeSensorRaw = 0;
-   
-  PressureAltitude = pressAltFilter.updateEstimate(bmeSensorRaw);
+  float sensorRawPressure = bmx280.getPressure();
+  float sensorRawTemp = bmx280.getTemperature();
+
+  if(isnan(sensorRawPressure) || isnan(sensorRawTemp))
+    return;
+
+  Serial.println("getAltitude(sensorRawPressure * 0.01, gndLevelPressure, sensorRawTemp);");
+  Serial.print(sensorRawPressure * 0.01);
+  Serial.print(" ");
+  Serial.print(gndLevelPressure);
+  Serial.print(" ");
+  Serial.println(sensorRawTemp);
+  
+  float alt = getAltitude(sensorRawPressure * 0.01, gndLevelPressure, sensorRawTemp);
+
+  if(isnan(alt))
+    return;
+
+  if(alt < 0)
+    alt = 0.0;
+  
+  PressureAltitude = (int)pressAltFilter.updateEstimate(alt);
   
   if(PressureAltitude > MaxPressureAltitude)
     MaxPressureAltitude = PressureAltitude;
+}
+
+float getAltitude(float pressure, float referencePressure, float outdoorTemp)
+{
+  float altitude = NAN;
+  if (!isnan(pressure) && !isnan(referencePressure) && !isnan(outdoorTemp))
+  {
+      altitude = pow(referencePressure / pressure, 0.190234) - 1;
+      altitude *= ((outdoorTemp + 273.15) / 0.0065);
+  }
+  return altitude;
 }
 #endif
 
@@ -311,7 +357,13 @@ void displayCurrentReadouts()
 #endif
 
 #ifdef BME280
-  u8x8.setCursor(9,5);
+  u8x8.setCursor(8,5);
+  if(PressureAltitude <= 999)
+    u8x8.print(FS(space));
+  if(PressureAltitude <= 99)
+    u8x8.print(FS(space));
+  if(PressureAltitude <= 9)
+    u8x8.print(FS(space));
   u8x8.print(PressureAltitude);
 #endif
 
@@ -358,7 +410,7 @@ void displayCurrentReadoutsLayout()
 #ifdef BME280
   u8x8.setCursor(0,5);
   u8x8.print(F("Bar Alt:"));
-  u8x8.setCursor(11,5);
+  u8x8.setCursor(12,5);
   u8x8.print(F("m"));
 #endif
 
@@ -424,8 +476,14 @@ void displayStatistics()
 #endif
 
 #ifdef BME280
-  u8x8.setCursor(13,5);
-  u8x8.print(MaxPressureAltitude);
+  u8x8.setCursor(12,5);  
+    if(PressureAltitude <= 999)
+    u8x8.print(FS(space));
+  if(PressureAltitude <= 99)
+    u8x8.print(FS(space));
+  if(PressureAltitude <= 9)
+    u8x8.print(FS(space));
+  u8x8.print(PressureAltitude);
 #endif
 
 #ifdef CURRENT_SENSOR
@@ -600,19 +658,19 @@ void readGPS()
     {
       Speed = fix.speed_kph();
     }
-    else
-    {
-      Speed = 0; 
-    }
+//    else
+//    {
+//      Speed = 0; 
+//    }
     
     if(fix.valid.altitude)
     {
       Height = (int)gpsAltitudeFilter.updateEstimate(fix.alt.whole);
     }
-    else
-    {
-      Height = 0;
-    }
+//    else
+//    {
+//      Height = 0;
+//    }
   }
 }
 
