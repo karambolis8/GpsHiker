@@ -595,7 +595,7 @@ void readGPS()
   {
     fix = gps.read();
     numSV = gps.sat_count;
-
+    
     if(fix.valid.speed)
     {
       Speed = fix.speed_kph();
