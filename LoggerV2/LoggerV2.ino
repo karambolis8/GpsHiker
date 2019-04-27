@@ -43,8 +43,8 @@ const float VccReference = 4.550;
   U8X8_SSD1306_128X64_NONAME_HW_I2C u8x8(U8X8_PIN_NONE);
   unsigned long lastScreenUpdate = 0; 
   bool doScreenUpdate = false;
-  bool displayStats = false;
-  int currentScreen = -1;
+  bool refreshDisplay = true;
+  int currentScreen = 2;
 
   const char clearLine[] PROGMEM = { "                " };
   const char space[] PROGMEM = { " " };
@@ -111,6 +111,15 @@ const float VccReference = 4.550;
   int airSpeed, maxAirSpeed = 0;
 #endif
 
+#ifdef GYRO
+  #include "Wire.h"
+  #include "MPU6050.h"
+  MPU6050 mpu;
+  float gx, gy, gz, maxGx, maxGy, maxGz = 0;
+  int offsetCalibrationSize = 10;
+  float offsetX, offsetY, offsetZ = 0;
+#endif
+
 bool buttonPressed = false;
 unsigned long buttonDebounce = 0;
 
@@ -157,6 +166,15 @@ void setup()
   setupAirSpeed(airSpeedPin);
 #endif
 
+#ifdef GYRO
+#ifdef OLED
+  u8x8.setCursor(0,5);
+  u8x8.print(F("Initializing MPU"));
+  delay(OLED_SENSOR_CALIBRATION_DELAY);
+#endif
+  initMpu();
+#endif
+
   initButton();
 }
 
@@ -200,14 +218,48 @@ void calculatePressAlt()
   
   if(isnan(alt))
     return;
-
-  if(alt < 0)
-    alt = 0.0;
   
   PressureAltitude = (int)pressAltFilter.updateEstimate(alt);
   
   if(PressureAltitude > MaxPressureAltitude)
     MaxPressureAltitude = PressureAltitude;
+}
+#endif
+
+#ifdef GYRO
+void initMpu()
+{
+  mpu.begin(MPU6050_SCALE_2000DPS, MPU6050_RANGE_4G);
+  delay(100);
+  
+  for(int i = 0; i < 10; i++)
+  {
+    Vector accel = mpu.readNormalizeAccel();;
+    offsetX += accel.XAxis;
+    offsetY += accel.YAxis;
+    offsetZ += accel.ZAxis;
+  }
+
+  offsetX /= 10.0;
+  offsetY /= 10.0;
+  offsetZ /= 10.0;
+}
+
+void calculateMpu()
+{
+  Vector accel = mpu.readNormalizeAccel();
+  
+  gx = abs(accel.XAxis - offsetX);
+  if(gx > maxGx)
+    maxGx = gx;
+    
+  gy = abs(accel.YAxis - offsetY);
+  if(gy > maxGy)
+    maxGy = gy;
+    
+  gz = abs(accel.ZAxis - offsetZ);
+  if(gz > maxGz)
+    maxGz = gz;
 }
 #endif
 
@@ -260,10 +312,10 @@ void updateScreen()
 #ifdef GPS_BAUD
   if (numSV < GPS_MIN_SAT)
   {
-    if(currentScreen != 0)
+    if(refreshDisplay)
     {
       printWaitingLayout();
-      currentScreen = 0;
+      refreshDisplay = false;
     }
     u8x8.setCursor(5,2);
     if(numSV < 10)
@@ -273,20 +325,27 @@ void updateScreen()
   else
   {
 #endif
-    if(displayStats)
+    if(currentScreen == 1)
     {
       displayStatistics();
     }
-    else
+    else if(currentScreen == 2)
     {
       displayCurrentReadouts();
+    }
+    else if(currentScreen == 3)
+    {
+      displayAcceleration();
     }
 #ifdef GPS_BAUD
   }
 #endif
 
   if(buttonPressed)
-    displayStats = not displayStats;
+  {
+    currentScreen = ((currentScreen + 1) % 3 ) +1;
+    refreshDisplay = true;
+  }
 
   u8x8.setCursor(15,7);
   if(blink)
@@ -316,18 +375,18 @@ void displayHeader()
 
 void displayCurrentReadouts()
 {
-  if(currentScreen != 1)
+  if(refreshDisplay)
   {
     clearLines(1);
     displayCurrentReadoutsLayout();
-    currentScreen = 1;
+    refreshDisplay = false;
   }
     
 #ifdef GPS_BAUD
   u8x8.setCursor(5, 1);
-    if(numSV < 10)
-      u8x8.print(FS(space));
-    u8x8.print(numSV);
+  if(numSV < 10)
+    u8x8.print(FS(space));
+  u8x8.print(numSV);
 
   u8x8.setCursor(8, 2);
   if(Speed <= 99)
@@ -362,7 +421,7 @@ void displayCurrentReadouts()
 #endif
 
 #ifdef CURRENT_SENSOR
-  u8x8.setCursor(5,6);
+  u8x8.setCursor(4,6);
   if(amps <= 10)
       u8x8.print(FS(space));
   u8x8.print(String(amps, 1));
@@ -410,8 +469,8 @@ void displayCurrentReadoutsLayout()
 
 #ifdef CURRENT_SENSOR
   u8x8.setCursor(0,6);
-  u8x8.print(F("Amps:"));
-  u8x8.setCursor(9,6);
+  u8x8.print(F("Amp:"));
+  u8x8.setCursor(8,6);
   u8x8.print(F("A"));
 #endif
 
@@ -425,11 +484,11 @@ void displayCurrentReadoutsLayout()
 
 void displayStatistics()
 {   
-  if(currentScreen != 2)
+  if(refreshDisplay)
   {
     clearLines(1);
     displayStatisticsLayout();
-    currentScreen = 2;
+    refreshDisplay = false;
   }
 
 #ifdef GPS_BAUD
@@ -477,13 +536,13 @@ void displayStatistics()
 
 #ifdef BME280
   u8x8.setCursor(8,5);  
-    if(PressureAltitude <= 999)
+    if(MaxPressureAltitude <= 999)
     u8x8.print(FS(space));
-  if(PressureAltitude <= 99)
+  if(MaxPressureAltitude <= 99)
     u8x8.print(FS(space));
-  if(PressureAltitude <= 9)
+  if(MaxPressureAltitude <= 9)
     u8x8.print(FS(space));
-  u8x8.print(PressureAltitude);
+  u8x8.print(MaxPressureAltitude);
 #endif
 
 #ifdef CURRENT_SENSOR
@@ -550,7 +609,7 @@ void displayStatisticsLayout()
 
 #ifdef CURRENT_SENSOR
   u8x8.setCursor(0,6);
-  u8x8.print(F("Max Amps:"));
+  u8x8.print(F("Max Amp:"));
   u8x8.setCursor(13,6);
   u8x8.print(F("A"));
 #endif
@@ -578,7 +637,7 @@ void displayCurrentTemp()
 void displayCurrentTempLayout()
 {
   u8x8.setCursor(0, 7);
-  u8x8.print(F("Temp:"));
+  u8x8.print(F("Tmp:"));
   u8x8.setCursor(8, 7);  
   u8x8.print(F("C"));
 }
@@ -596,9 +655,91 @@ void displayMaxTemp()
 void displayMaxTempLayout()
 {
   u8x8.setCursor(0, 7);
-  u8x8.print(F("Max Temp:"));
+  u8x8.print(F("Max Tmp:"));
   u8x8.setCursor(12, 7); 
   u8x8.print(F("C"));
+}
+#endif
+
+#ifdef GYRO
+void displayAcceleration()
+{
+  if(refreshDisplay)
+  {
+    clearLines(1);
+    displayAccelerationLayout();
+    refreshDisplay = false;
+  }
+  
+  u8x8.setCursor(6, 1);
+  if(gx < 100)
+    u8x8.print(FS(space));
+  if(gx < 10)
+    u8x8.print(FS(space));    
+  u8x8.print(String(gx, 1));
+  
+  u8x8.setCursor(6, 2);
+  if(gy < 100)
+    u8x8.print(FS(space));
+  if(gy < 10)
+    u8x8.print(FS(space));    
+  u8x8.print(String(gy, 1));
+  
+  u8x8.setCursor(6, 3);
+  if(gz < 100)
+    u8x8.print(FS(space));
+  if(gz < 10)
+    u8x8.print(FS(space));    
+  u8x8.print(String(gz, 1));
+  
+  u8x8.setCursor(6, 4);
+  if(maxGx < 100)
+    u8x8.print(FS(space));
+  if(maxGx < 10)
+    u8x8.print(FS(space));    
+  u8x8.print(String(maxGx, 1));
+  
+  u8x8.setCursor(6, 5);
+  if(maxGy < 100)
+    u8x8.print(FS(space));
+  if(maxGy < 10)
+    u8x8.print(FS(space));    
+  u8x8.print(String(maxGy, 1));
+  
+  u8x8.setCursor(6, 6);
+  if(maxGz < 100)
+    u8x8.print(FS(space));
+  if(maxGz < 10)
+    u8x8.print(FS(space));    
+  u8x8.print(String(maxGz, 1));
+}
+
+void displayAccelerationLayout()
+{
+  u8x8.setCursor(0, 1);
+  u8x8.print(F("Acc X:"));
+  u8x8.setCursor(11, 1);
+  u8x8.print(F("m/s2"));
+  u8x8.setCursor(0, 2);
+  u8x8.print(F("Acc Y:"));
+  u8x8.setCursor(11, 2);
+  u8x8.print(F("m/s2"));
+  u8x8.setCursor(0, 3);
+  u8x8.print(F("Acc Z:"));
+  u8x8.setCursor(11, 3);
+  u8x8.print(F("m/s2"));
+  u8x8.setCursor(0, 4);
+  u8x8.print(F("Max X:"));
+  u8x8.setCursor(11, 4);
+  u8x8.print(F("m/s2"));
+  u8x8.setCursor(0, 5);
+  u8x8.print(F("Max Y:"));
+  u8x8.setCursor(11, 5);
+  u8x8.print(F("m/s2"));
+  u8x8.setCursor(0, 6);
+  u8x8.print(F("Max Z:"));
+  u8x8.setCursor(11, 6);
+  u8x8.print(F("m/s2"));
 }
 #endif
 
@@ -667,19 +808,11 @@ void readGPS()
     {
       Speed = fix.speed_kph();
     }
-//    else
-//    {
-//      Speed = 0; 
-//    }
     
     if(fix.valid.altitude)
     {
       Height = (int)gpsAltitudeFilter.updateEstimate(fix.alt.whole);
     }
-//    else
-//    {
-//      Height = 0;
-//    }
   }
 }
 
@@ -697,9 +830,9 @@ void calculateGps()
       ZeroHeight = Height;
     }
     
-    if (Height > MaxHeight && zeroingCounter <= 0)
+    if (Height-ZeroHeight > MaxHeight && zeroingCounter <= 0)
     {
-      MaxHeight = Height;
+      MaxHeight = Height - ZeroHeight;
     }
   }
 }
@@ -741,6 +874,10 @@ void performReadouts()
 
 #ifdef AIRSPEED
   calculateAirSpeed();
+#endif
+
+#ifdef GYRO
+  calculateMpu();
 #endif
 }
 
