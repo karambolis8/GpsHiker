@@ -1,7 +1,7 @@
 
 #include "Config.h"
 
-const float VccReference = 4.550;
+const float VccReference = 4.55;
 
 #ifdef GPS_BAUD
   #include "NMEAGPS.h"
@@ -95,8 +95,8 @@ const float VccReference = 4.550;
 #endif
 
   int currentPin = 6;
-  double currentSensorVoltage = 0;
-  double MaxCurrent, amps = 0;
+  int currentOffsetSize = 10;
+  float MaxCurrent, amps, currentOffset = 0;
 #endif
 
 #ifdef AIRSPEED
@@ -125,6 +125,8 @@ unsigned long buttonDebounce = 0;
 
 void setup()
 {
+  Serial.begin(9600);
+  
 #ifdef OLED
   initOled();
   displayHeader();
@@ -173,6 +175,15 @@ void setup()
   delay(OLED_SENSOR_CALIBRATION_DELAY);
 #endif
   initMpu();
+#endif
+
+#ifdef CURRENT_SENSOR
+#ifdef OLED
+  u8x8.setCursor(0,6);
+  u8x8.print(F("Initializing ACS"));
+  delay(OLED_SENSOR_CALIBRATION_DELAY);
+#endif
+  initCurrent();
 #endif
 
   initButton();
@@ -882,11 +893,29 @@ void performReadouts()
 }
 
 #ifdef CURRENT_SENSOR
+
+void initCurrent()
+{
+  int sum = 0;
+  
+  for(int i = 0 ; i < currentOffsetSize; i++)
+  {
+    sum += analogRead(currentPin);
+  }
+
+  sum /= currentOffsetSize;
+  currentOffset = 512 - sum;
+}
+
 void calculateCurrent()
 {
-  currentSensorVoltage = (analogRead(currentPin) / 1024.0) * VccReference;
+  float currentSensorVoltage = ((analogRead(currentPin) - currentOffset) / 1024.0) * VccReference;
 
-  float sensorAmps = (currentSensorVoltage - VccReference/2) / mvPerAmp;
+  Serial.println(currentSensorVoltage);
+
+  float sensorAmps = (currentSensorVoltage - (VccReference/2)) / (mvPerAmp * 0.001);
+
+  Serial.println(analogRead(currentPin));
   
   if(sensorAmps < 0)
     sensorAmps = 0.0;
