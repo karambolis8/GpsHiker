@@ -1,7 +1,7 @@
 
 #include "Config.h"
 
-const float VccReference = 4.55;
+const float VccReference = 5.0;
 
 #ifdef GPS_BAUD
   #include "NMEAGPS.h"
@@ -26,6 +26,7 @@ const float VccReference = 4.55;
   gps_fix  fix;
   int zeroingCounter = GPS_ZEROING_TIME;
   unsigned long lastZeroingUpdate = 0;
+  unsigned long lastGPSRead = 0;
   long Speed = 0;
   long MaxSpeed = 0;
   int Height = 0;
@@ -95,8 +96,8 @@ const float VccReference = 4.55;
 #endif
 
   int currentPin = 6;
-  int currentOffsetSize = 10;
-  float MaxCurrent, amps, currentOffset = 0;
+  float MaxCurrent, amps;
+  int currentOffset = -2;
 #endif
 
 #ifdef AIRSPEED
@@ -122,11 +123,10 @@ const float VccReference = 4.55;
 
 bool buttonPressed = false;
 unsigned long buttonDebounce = 0;
+unsigned long lastPerformedReadouts = 0;
 
 void setup()
 {
-  Serial.begin(9600);
-  
 #ifdef OLED
   initOled();
   displayHeader();
@@ -175,15 +175,6 @@ void setup()
   delay(OLED_SENSOR_CALIBRATION_DELAY);
 #endif
   initMpu();
-#endif
-
-#ifdef CURRENT_SENSOR
-#ifdef OLED
-  u8x8.setCursor(0,6);
-  u8x8.print(F("Initializing ACS"));
-  delay(OLED_SENSOR_CALIBRATION_DELAY);
-#endif
-  initCurrent();
 #endif
 
   initButton();
@@ -287,17 +278,26 @@ void loop()
 #endif
   
 #ifdef GPS_BAUD
-  readGPS();
-
-  if(numSV >= GPS_MIN_SAT && zeroingCounter > 0 && now - lastZeroingUpdate >= 1000)
+  if(lastGPSRead - now >= GPS_REFRESH)
   {
-    zeroingCounter = zeroingCounter - 1;  
-    lastZeroingUpdate = now;
+    readGPS();
+    lastGPSRead = millis();
+
+    if(numSV >= GPS_MIN_SAT && zeroingCounter > 0 && lastGPSRead - lastZeroingUpdate >= 1000)
+    {
+      zeroingCounter = zeroingCounter - 1;  
+      lastZeroingUpdate = lastGPSRead;
+    }
   }
 #endif
 
   readButtonPressed();
-  performReadouts();
+
+  if(lastPerformedReadouts - millis() >= READOUTS_REFRESH)
+  {
+    performReadouts();
+    lastPerformedReadouts = millis();
+  }
 
 #ifdef OLED
   if(doScreenUpdate)
@@ -344,10 +344,12 @@ void updateScreen()
     {
       displayCurrentReadouts();
     }
+#ifdef GYRO
     else if(currentScreen == 3)
     {
       displayAcceleration();
     }
+#endif
 #ifdef GPS_BAUD
   }
 #endif
@@ -893,29 +895,13 @@ void performReadouts()
 }
 
 #ifdef CURRENT_SENSOR
-
-void initCurrent()
-{
-  int sum = 0;
-  
-  for(int i = 0 ; i < currentOffsetSize; i++)
-  {
-    sum += analogRead(currentPin);
-  }
-
-  sum /= currentOffsetSize;
-  currentOffset = 512 - sum;
-}
-
 void calculateCurrent()
 {
-  float currentSensorVoltage = ((analogRead(currentPin) - currentOffset) / 1024.0) * VccReference;
-
-  Serial.println(currentSensorVoltage);
-
+  delay(ANALOG_READ_DELAY);
+  int analogVal = analogRead(currentPin);
+  Serial.println(analogVal);
+  float currentSensorVoltage = ((analogVal - currentOffset) / 1024.0) * VccReference;
   float sensorAmps = (currentSensorVoltage - (VccReference/2)) / (mvPerAmp * 0.001);
-
-  Serial.println(analogRead(currentPin));
   
   if(sensorAmps < 0)
     sensorAmps = 0.0;
@@ -931,6 +917,7 @@ void calculateCurrent()
 void setupAirSpeed(int port)
 {    
   for (int ii=0;ii<offsetSize;ii++){
+    delay(ANALOG_READ_DELAY);
     offset += analogRead(port)-(1023/2);
   }
   offset /= offsetSize;
@@ -945,6 +932,7 @@ void calculateAirSpeed()
 
 float calculateRawAirSpeed(int port)
 {
+  delay(ANALOG_READ_DELAY);
   int rawSensor = analogRead(port) - offset;
   if(rawSensor > 512 - zeroSpan && rawSensor < 512 + zeroSpan) 
   {
@@ -975,18 +963,20 @@ void calculateTemp()
 #ifdef LM35
 int calculateRawTemp(int port)
 {
-    int readVal = analogRead(port);
-    float volt = readVal * VccReference / 1024.0;
-    return volt * 100.0;
+  delay(ANALOG_READ_DELAY);
+  int readVal = analogRead(port);
+  float volt = readVal * VccReference / 1024.0;
+  return volt * 100.0;
 }
 #endif
 
 #ifdef TMP36
 int calculateRawTemp(int port)
 {
-    int readVal = analogRead(port);
-    float volt = readVal* VccReference / 1024.0 ;
-    return (volt - 0.5) * 100.0;
+  delay(ANALOG_READ_DELAY);
+  int readVal = analogRead(port);
+  float volt = readVal * VccReference / 1024.0 ;
+  return (volt - 0.5) * 100.0;
 }
 #endif
 #endif
