@@ -45,7 +45,7 @@ const float VccReference = 5.0;
   unsigned long lastScreenUpdate = 0; 
   bool doScreenUpdate = false;
   bool refreshDisplay = true;
-  int currentScreen = 2;
+  int currentScreen = 1;
 
   const char clearLine[] PROGMEM = { "                " };
   const char space[] PROGMEM = { " " };
@@ -81,7 +81,7 @@ const float VccReference = 5.0;
   SimpleKalmanFilter temp1Filter(0.03, 0.003, 0.03);
   
   int T1, T1Max = 0;
-  int tempPin = 0;
+  int tempPin = 1;
 #endif
 
 #ifdef CURRENT_SENSOR
@@ -95,7 +95,7 @@ const float VccReference = 5.0;
   int mvPerAmp = 100;
 #endif
 
-  int currentPin = 6;
+  int currentPin = 0;
   float MaxCurrent, amps;
   int currentOffset = -2;
 #endif
@@ -121,9 +121,14 @@ const float VccReference = 5.0;
   float offsetX, offsetY, offsetZ = 0;
 #endif
 
-bool buttonPressed = false;
-unsigned long buttonDebounce = 0;
+#ifdef BUTTON_INPUT
+  unsigned long buttonDebounce = 0;
+#else
+  unsigned long lastScreenChange = 0;
+#endif
+
 unsigned long lastPerformedReadouts = 0;
+bool buttonPressed = false;
 
 void setup()
 {
@@ -177,7 +182,9 @@ void setup()
   initMpu();
 #endif
 
+#ifdef BUTTON_INPUT
   initButton();
+#endif
 }
 
 #ifdef OLED
@@ -189,11 +196,29 @@ void initOled()
 }
 #endif
 
+#ifdef BUTTON_INPUT
 void initButton()
 {
   pinMode(BUTTON_INPUT,INPUT);
   digitalWrite(BUTTON_INPUT,HIGH);
 }
+
+void readButtonPressed()
+{
+  buttonPressed = (digitalRead(BUTTON_INPUT) == 0);
+  
+//  unsigned long now = millis();
+//  if((digitalRead(BUTTON_INPUT) == 0) && now - buttonDebounce >= BUTTON_DELAY)
+//  {
+//  buttonPressed = true;
+//  buttonDebounce = now;
+//  }
+//  else
+//  {
+//    buttonPressed = false;
+//  }   
+}
+#endif
 
 #ifdef BME280
 void initBme()
@@ -281,7 +306,8 @@ void loop()
   if(lastGPSRead - now >= GPS_REFRESH)
   {
     readGPS();
-    lastGPSRead = millis();
+    now = millis();
+    lastGPSRead = now;
 
     if(numSV >= GPS_MIN_SAT && zeroingCounter > 0 && lastGPSRead - lastZeroingUpdate >= 1000)
     {
@@ -291,7 +317,17 @@ void loop()
   }
 #endif
 
+#ifdef BUTTON_INPUT
   readButtonPressed();
+#else
+  now = millis();
+  if(now - lastScreenChange >= BUTTON_AUTO)
+  {
+    
+    lastScreenChange = now;
+    buttonPressed = true;
+  }
+#endif
 
   if(lastPerformedReadouts - millis() >= READOUTS_REFRESH)
   {
@@ -323,11 +359,11 @@ void updateScreen()
 #ifdef GPS_BAUD
   if (numSV < GPS_MIN_SAT)
   {
-    if(refreshDisplay)
-    {
+//    if(refreshDisplay)
+//    {
       printWaitingLayout();
-      refreshDisplay = false;
-    }
+//      refreshDisplay = false;
+//    }
     u8x8.setCursor(5,2);
     if(numSV < 10)
       u8x8.print(FS(space));
@@ -358,6 +394,7 @@ void updateScreen()
   {
     currentScreen = ((currentScreen + 1) % 3 ) +1;
     refreshDisplay = true;
+    buttonPressed = false;
   }
 
   u8x8.setCursor(15,7);
@@ -505,7 +542,7 @@ void displayStatistics()
   }
 
 #ifdef GPS_BAUD
- if(currentScreen == 2 && zeroingCounter == 0)
+ if(currentScreen == 2 && zeroingCounter <= 0)
  {
     clearLines(1);
     displayStatisticsLayout();  
@@ -596,8 +633,8 @@ void displayStatisticsLayout()
   }
   else
   {
-    Serial.println(zeroingCounter);
-    if(zeroingCounter == 0)
+    //Serial.println(zeroingCounter);
+    if(zeroingCounter <= 0)
     {
       u8x8.print(FS(clearLine));
       zeroingCounter -= 1; 
@@ -849,23 +886,7 @@ void calculateGps()
     }
   }
 }
-#endif
-
-void readButtonPressed()
-{
-  buttonPressed = (digitalRead(BUTTON_INPUT) == 0);
-  
-//  unsigned long now = millis();
-//  if((digitalRead(BUTTON_INPUT) == 0) && now - buttonDebounce >= BUTTON_DELAY)
-//  {
-//	buttonPressed = true;
-//	buttonDebounce = now;
-//  }
-//  else
-//  {
-//	  buttonPressed = false;
-//  }	  
-}
+#endif=
 
 void performReadouts()
 {
@@ -899,7 +920,7 @@ void calculateCurrent()
 {
   delay(ANALOG_READ_DELAY);
   int analogVal = analogRead(currentPin);
-  Serial.println(analogVal);
+//  Serial.println(analogVal);
   float currentSensorVoltage = ((analogVal - currentOffset) / 1024.0) * VccReference;
   float sensorAmps = (currentSensorVoltage - (VccReference/2)) / (mvPerAmp * 0.001);
   
