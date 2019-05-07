@@ -131,7 +131,7 @@ unsigned long lastPerformedReadouts = 0;
 bool buttonPressed = false;
 
 void setup()
-{
+{  
 #ifdef OLED
   initOled();
   displayHeader();
@@ -291,7 +291,7 @@ void calculateMpu()
 #endif
 
 void loop()
-{  
+{
   unsigned long now = millis();
 #ifdef OLED
   if ( now - lastScreenUpdate < OLED_REFRESH ) {
@@ -486,6 +486,9 @@ void displayCurrentReadouts()
   if(abs(airSpeed) <= 9)
       u8x8.print(FS(space));
   u8x8.print(airSpeed);
+
+  Serial.print("airSpeed: ");
+  Serial.println(airSpeed);
 #endif
 }
 
@@ -533,7 +536,7 @@ void displayCurrentReadoutsLayout()
 }
 
 void displayStatistics()
-{   
+{
   if(refreshDisplay)
   {
     clearLines(1);
@@ -633,7 +636,6 @@ void displayStatisticsLayout()
   }
   else
   {
-    //Serial.println(zeroingCounter);
     if(zeroingCounter <= 0)
     {
       u8x8.print(FS(clearLine));
