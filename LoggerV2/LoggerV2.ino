@@ -44,7 +44,8 @@ const float VccReference = 5.0;
   U8X8_SSD1306_128X64_NONAME_HW_I2C u8x8(U8X8_PIN_NONE);
   unsigned long lastScreenUpdate = 0; 
   bool doScreenUpdate = false;
-  bool refreshDisplay = true;
+//  bool refreshDisplay = true;
+  int previousScreen = -1;
   int currentScreen = 1;
 
   const char clearLine[] PROGMEM = { "                " };
@@ -78,15 +79,15 @@ const float VccReference = 5.0;
 
 #ifdef TEMP
   #include <SimpleKalmanFilter.h>  
-  SimpleKalmanFilter temp1Filter(0.03, 0.003, 0.03);
+  SimpleKalmanFilter temp1Filter(1, 1, 0.01);
   
   int T1, T1Max = 0;
-  int tempPin = 1;
+  int tempPin = 0;
 #endif
 
 #ifdef CURRENT_SENSOR
   #include <SimpleKalmanFilter.h>
-  SimpleKalmanFilter currentFilter(0.03, 0.003, 0.03); 
+  SimpleKalmanFilter currentFilter(1, 1, 0.01); 
   
 #ifdef ACS758_50B
   int mvPerAmp = 40;
@@ -95,14 +96,14 @@ const float VccReference = 5.0;
   int mvPerAmp = 100;
 #endif
 
-  int currentPin = 0;
+  int currentPin = 1;
   float MaxCurrent, amps;
   int currentOffset = -2;
 #endif
 
 #ifdef AIRSPEED
   #include <SimpleKalmanFilter.h>
-  SimpleKalmanFilter airSpeedFilter(0.03, 0.003, 0.03); 
+  SimpleKalmanFilter airSpeedFilter(1, 1, 0.01); 
   
   float rho = 1.204; // density of air   
   int zeroSpan = 2;
@@ -359,11 +360,11 @@ void updateScreen()
 #ifdef GPS_BAUD
   if (numSV < GPS_MIN_SAT)
   {
-//    if(refreshDisplay)
-//    {
+    if(currentScreen != previousScreen)
+    {
       printWaitingLayout();
-//      refreshDisplay = false;
-//    }
+      currentScreen = previousScreen = 0;
+    }
     u8x8.setCursor(5,2);
     if(numSV < 10)
       u8x8.print(FS(space));
@@ -393,7 +394,6 @@ void updateScreen()
   if(buttonPressed)
   {
     currentScreen = ((currentScreen + 1) % 3 ) +1;
-    refreshDisplay = true;
     buttonPressed = false;
   }
 
@@ -425,11 +425,11 @@ void displayHeader()
 
 void displayCurrentReadouts()
 {
-  if(refreshDisplay)
+  if(currentScreen != previousScreen)
   {
     clearLines(1);
     displayCurrentReadoutsLayout();
-    refreshDisplay = false;
+    previousScreen = currentScreen;
   }
     
 #ifdef GPS_BAUD
@@ -537,11 +537,11 @@ void displayCurrentReadoutsLayout()
 
 void displayStatistics()
 {
-  if(refreshDisplay)
+  if(currentScreen != previousScreen)
   {
     clearLines(1);
     displayStatisticsLayout();
-    refreshDisplay = false;
+    previousScreen = currentScreen;
   }
 
 #ifdef GPS_BAUD
