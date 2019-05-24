@@ -98,7 +98,7 @@ const float VccReference = 5.0;
 
   int currentPin = 1;
   float MaxCurrent, amps;
-  int currentOffset = -2;
+  int currentOffset = -3;
 #endif
 
 #ifdef AIRSPEED
@@ -304,8 +304,8 @@ void loop()
 #endif
   
 #ifdef GPS_BAUD
-  if(lastGPSRead - now >= GPS_REFRESH)
-  {
+//  if(lastGPSRead - now >= GPS_REFRESH)
+//  {
     readGPS();
     now = millis();
     lastGPSRead = now;
@@ -315,7 +315,7 @@ void loop()
       zeroingCounter = zeroingCounter - 1;  
       lastZeroingUpdate = lastGPSRead;
     }
-  }
+//  }
 #endif
 
 #ifdef BUTTON_INPUT

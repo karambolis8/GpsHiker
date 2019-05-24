@@ -11,8 +11,8 @@
 //RX-TX
 #define GPS_BAUD 9600
 //#define GPS_BAUD 115200
-#define GPS_MIN_SAT 12
-#define GPS_ZEROING_TIME 40
+#define GPS_MIN_SAT 5
+#define GPS_ZEROING_TIME 30
 #define GPS_REFRESH 1000
 
 //I2C
@@ -39,6 +39,6 @@
 //#define BME280
 
 //Analog A1
-//#define CURRENT_SENSOR
+#define CURRENT_SENSOR
 //#define ACS758_50B
-//#define ACS712_20B
+#define ACS712_20B
