@@ -4,14 +4,12 @@
 
 #define BUTTON_AUTO 5000
 
-#define READOUTS_REFRESH 500
-
-#define ANALOG_READ_DELAY 50
+#define ANALOG_READ_DELAY 500
 
 //RX-TX
 #define GPS_BAUD 9600
 //#define GPS_BAUD 115200
-#define GPS_MIN_SAT 5
+#define GPS_MIN_SAT 10
 #define GPS_ZEROING_TIME 30
 #define GPS_REFRESH 1000
 
@@ -36,9 +34,9 @@
 //#define AIRSPEED
 
 //I2C
-//#define BME280
+#define BME280
 
 //Analog A1
 #define CURRENT_SENSOR
-//#define ACS758_50B
-#define ACS712_20B
+#define ACS758_50B
+//#define ACS712_20B

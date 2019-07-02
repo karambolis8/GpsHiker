@@ -80,7 +80,8 @@ const float VccReference = 5.0;
 #ifdef TEMP
   #include <SimpleKalmanFilter.h>  
   SimpleKalmanFilter temp1Filter(1, 1, 0.01);
-  
+
+  unsigned long lastTempReadout = 0;
   int T1, T1Max = 0;
   int tempPin = 0;
 #endif
@@ -99,6 +100,7 @@ const float VccReference = 5.0;
   int currentPin = 1;
   float MaxCurrent, amps;
   int currentOffset = -3;
+  unsigned long lastCurrentReadout = 0;
 #endif
 
 #ifdef AIRSPEED
@@ -330,11 +332,9 @@ void loop()
   }
 #endif
 
-  if(lastPerformedReadouts - millis() >= READOUTS_REFRESH)
-  {
-    performReadouts();
-    lastPerformedReadouts = millis();
-  }
+  performReadouts();
+  lastPerformedReadouts = millis();
+  
 
 #ifdef OLED
   if(doScreenUpdate)
@@ -391,7 +391,7 @@ void updateScreen()
   }
 #endif
 
-  if(buttonPressed)
+  if(buttonPressed && numSV >= GPS_MIN_SAT)
   {
     currentScreen = ((currentScreen + 1) % 3 ) +1;
     buttonPressed = false;
@@ -888,16 +888,16 @@ void calculateGps()
     }
   }
 }
-#endif=
+#endif
 
 void performReadouts()
 {
-#ifdef TEMP
-  calculateTemp();
-#endif
-
 #ifdef GPS_BAUD
   calculateGps();
+#endif
+
+#ifdef TEMP
+  calculateTemp();
 #endif
 
 #ifdef BME280
@@ -920,19 +920,22 @@ void performReadouts()
 #ifdef CURRENT_SENSOR
 void calculateCurrent()
 {
-  delay(ANALOG_READ_DELAY);
-  int analogVal = analogRead(currentPin);
-//  Serial.println(analogVal);
-  float currentSensorVoltage = ((analogVal - currentOffset) / 1024.0) * VccReference;
-  float sensorAmps = (currentSensorVoltage - (VccReference/2)) / (mvPerAmp * 0.001);
+  if(millis() - lastCurrentReadout >= ANALOG_READ_DELAY)
+  {
+    int analogVal = analogRead(currentPin);
+    float currentSensorVoltage = ((analogVal - currentOffset) / 1024.0) * VccReference;
+    float sensorAmps = (currentSensorVoltage - (VccReference/2)) / (mvPerAmp * 0.001);
+    
+    if(sensorAmps < 0)
+      sensorAmps = 0.0;
   
-  if(sensorAmps < 0)
-    sensorAmps = 0.0;
+    amps = currentFilter.updateEstimate(sensorAmps);
+  
+    if(MaxCurrent < amps)
+      MaxCurrent = amps;
 
-  amps = currentFilter.updateEstimate(sensorAmps);
-
-  if(MaxCurrent < amps)
-    MaxCurrent = amps;
+    lastCurrentReadout = millis();
+  }
 }
 #endif
 
@@ -978,15 +981,19 @@ float calculateRawAirSpeed(int port)
 #ifdef TEMP
 void calculateTemp()
 {
-  T1 = temp1Filter.updateEstimate(calculateRawTemp(tempPin));
-  if(T1 > T1Max)
-    T1Max = T1;
+  if(millis() - lastTempReadout >= ANALOG_READ_DELAY)
+  {
+    T1 = temp1Filter.updateEstimate(calculateRawTemp(tempPin));
+    if(T1 > T1Max)
+      T1Max = T1;
+
+    lastTempReadout = millis();
+  }
 }
 
 #ifdef LM35
 int calculateRawTemp(int port)
 {
-  delay(ANALOG_READ_DELAY);
   int readVal = analogRead(port);
   float volt = readVal * VccReference / 1024.0;
   return volt * 100.0;
@@ -996,7 +1003,6 @@ int calculateRawTemp(int port)
 #ifdef TMP36
 int calculateRawTemp(int port)
 {
-  delay(ANALOG_READ_DELAY);
   int readVal = analogRead(port);
   float volt = readVal * VccReference / 1024.0 ;
   return (volt - 0.5) * 100.0;
