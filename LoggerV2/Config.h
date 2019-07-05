@@ -10,17 +10,11 @@
 #define GPS_BAUD 9600
 //#define GPS_BAUD 115200
 #define GPS_MIN_SAT 10
-#define GPS_ZEROING_TIME 30
-#define GPS_REFRESH 1000
 
 //I2C
 #define OLED
 #define OLED_REFRESH 1000
 #define OLED_SENSOR_CALIBRATION_DELAY 500
-
-//SPI
-//#define SD_CARD
-//#define SD_LOG_TIME 1000
 
 //I2C
 //#define GYRO
@@ -29,9 +23,6 @@
 #define TEMP
 //#define LM35
 #define TMP36
-
-//Analog A7
-//#define AIRSPEED
 
 //I2C
 #define BME280

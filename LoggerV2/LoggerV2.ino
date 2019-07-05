@@ -18,19 +18,10 @@ const float VccReference = 5.0;
   #ifndef NMEAGPS_PARSE_SATELLITE_INFO
     #error You must define NMEAGPS_PARSE_SATELLITE_INFO in NMEAGPS_cfg.h!
   #endif
-  
-  #include <SimpleKalmanFilter.h>
-  SimpleKalmanFilter gpsAltitudeFilter(0.03, 0.003, 0.03); 
 
   NMEAGPS  gps;
   gps_fix  fix;
-  int zeroingCounter = GPS_ZEROING_TIME;
-  unsigned long lastZeroingUpdate = 0;
-  unsigned long lastGPSRead = 0;
-  long Speed = 0;
-  long MaxSpeed = 0;
-  int Height = 0;
-  int MaxHeight, ZeroHeight = 0;
+  long Speed, MaxSpeed = 0;
   int numSV = 0;  
 #endif
 
@@ -44,7 +35,6 @@ const float VccReference = 5.0;
   U8X8_SSD1306_128X64_NONAME_HW_I2C u8x8(U8X8_PIN_NONE);
   unsigned long lastScreenUpdate = 0; 
   bool doScreenUpdate = false;
-//  bool refreshDisplay = true;
   int previousScreen = -1;
   int currentScreen = 1;
 
@@ -52,15 +42,6 @@ const float VccReference = 5.0;
   const char space[] PROGMEM = { " " };
 
   bool blink = true;
-#endif
-
-#ifdef SD_CARD
-  #include <SPI.h>
-  #include <SD.h>
-  
-  int pinCS = 8;
-  unsigned long lastSdWrite = 0;
-  File myFile;
 #endif
 
 #ifdef BME280
@@ -103,18 +84,6 @@ const float VccReference = 5.0;
   unsigned long lastCurrentReadout = 0;
 #endif
 
-#ifdef AIRSPEED
-  #include <SimpleKalmanFilter.h>
-  SimpleKalmanFilter airSpeedFilter(1, 1, 0.01); 
-  
-  float rho = 1.204; // density of air   
-  int zeroSpan = 2;
-  int offset = 0;
-  int offsetSize = 10;
-  int airSpeedPin = 7;
-  int airSpeed, maxAirSpeed = 0;
-#endif
-
 #ifdef GYRO
   #include "Wire.h"
   #include "MPU6050.h"
@@ -140,15 +109,6 @@ void setup()
   displayHeader();
 #endif
 
-#ifdef SD_CARD
-#ifdef OLED
-  u8x8.setCursor(0,1);
-  u8x8.print(F("Initializing SD"));
-  delay(OLED_SENSOR_CALIBRATION_DELAY);
-#endif
-  initSDCard();
-#endif
-
 #ifdef GPS_BAUD
 #ifdef OLED
   u8x8.setCursor(0,2);
@@ -165,15 +125,6 @@ void setup()
   delay(OLED_SENSOR_CALIBRATION_DELAY);
 #endif
   initBme();
-#endif
-
-#ifdef AIRSPEED
-#ifdef OLED
-  u8x8.setCursor(0,4);
-  u8x8.print(F("Initializing AIR"));
-  delay(OLED_SENSOR_CALIBRATION_DELAY);
-#endif
-  setupAirSpeed(airSpeedPin);
 #endif
 
 #ifdef GYRO
@@ -306,18 +257,7 @@ void loop()
 #endif
   
 #ifdef GPS_BAUD
-//  if(lastGPSRead - now >= GPS_REFRESH)
-//  {
     readGPS();
-    now = millis();
-    lastGPSRead = now;
-
-    if(numSV >= GPS_MIN_SAT && zeroingCounter > 0 && lastGPSRead - lastZeroingUpdate >= 1000)
-    {
-      zeroingCounter = zeroingCounter - 1;  
-      lastZeroingUpdate = lastGPSRead;
-    }
-//  }
 #endif
 
 #ifdef BUTTON_INPUT
@@ -341,15 +281,6 @@ void loop()
   {
     updateScreen();
     lastScreenUpdate = millis();
-  }
-#endif
-
-#ifdef SD_CARD
-  now = millis();
-  if(now - lastSdWrite >= SD_LOG_TIME)
-  {
-    logToSD();
-    lastSdWrite = now;
   }
 #endif
 }
@@ -444,15 +375,6 @@ void displayCurrentReadouts()
   if(Speed <= 9)
     u8x8.print(FS(space));
   u8x8.print(Speed);
-
-  u8x8.setCursor(8, 3);
-  if(Height <= 999)
-    u8x8.print(FS(space));
-  if(Height <= 99)
-    u8x8.print(FS(space));
-  if(Height <= 9)
-    u8x8.print(FS(space));
-  u8x8.print(Height);
 #endif
 
 #ifdef TEMP
@@ -476,20 +398,6 @@ void displayCurrentReadouts()
       u8x8.print(FS(space));
   u8x8.print(String(amps, 1));
 #endif
-
-#ifdef AIRSPEED
-  u8x8.setCursor(8,4);
-  if(airSpeed >= 0)
-      u8x8.print(FS(space));
-  if(abs(airSpeed) <= 99)
-      u8x8.print(FS(space));
-  if(abs(airSpeed) <= 9)
-      u8x8.print(FS(space));
-  u8x8.print(airSpeed);
-
-  Serial.print("airSpeed: ");
-  Serial.println(airSpeed);
-#endif
 }
 
 void displayCurrentReadoutsLayout()
@@ -502,11 +410,6 @@ void displayCurrentReadoutsLayout()
   u8x8.print(F("GPS Spd:"));
   u8x8.setCursor(11, 2);
   u8x8.print(F("km/h"));
-
-  u8x8.setCursor(0, 3);
-  u8x8.print(F("GPS Alt:"));
-  u8x8.setCursor(12, 3);
-  u8x8.print(F("m"));
 #endif
 
 #ifdef TEMP
@@ -526,13 +429,6 @@ void displayCurrentReadoutsLayout()
   u8x8.setCursor(8,6);
   u8x8.print(F("A"));
 #endif
-
-#ifdef AIRSPEED
-  u8x8.setCursor(0,4);
-  u8x8.print(F("Air Spd:"));
-  u8x8.setCursor(12,4);
-  u8x8.print(F("km/h"));
-#endif
 }
 
 void displayStatistics()
@@ -545,11 +441,11 @@ void displayStatistics()
   }
 
 #ifdef GPS_BAUD
- if(currentScreen == 2 && zeroingCounter <= 0)
- {
+  if(currentScreen == 2)
+  {
     clearLines(1);
     displayStatisticsLayout();  
- }
+  }
 
   u8x8.setCursor(5, 1); 
   if(numSV < 10)
@@ -562,25 +458,6 @@ void displayStatistics()
   if(MaxSpeed <= 9)
     u8x8.print(FS(space));
   u8x8.print(MaxSpeed);
-    
-  if(zeroingCounter > 0)
-  {
-    u8x8.setCursor(12, 3);
-    if(zeroingCounter <= 9)
-      u8x8.print(FS(space));
-    u8x8.print(zeroingCounter);
-  }
-  else
-  {
-    u8x8.setCursor(8, 3);
-    if(MaxHeight <= 999)
-      u8x8.print(FS(space));
-    if(MaxHeight <= 99)
-      u8x8.print(FS(space));
-    if(MaxHeight <= 9)
-      u8x8.print(FS(space));
-    u8x8.print(MaxHeight);
-  }
 #endif
 
 #ifdef TEMP
@@ -604,17 +481,6 @@ void displayStatistics()
       u8x8.print(FS(space));
   u8x8.print(String(MaxCurrent, 1));
 #endif
-
-#ifdef AIRSPEED
-  u8x8.setCursor(8,4);
-  if(maxAirSpeed >= 0)
-      u8x8.print(FS(space));
-  if(abs(maxAirSpeed) <= 99)
-      u8x8.print(FS(space));
-  if(abs(maxAirSpeed) <= 9)
-      u8x8.print(FS(space));
-  u8x8.print(maxAirSpeed);
-#endif
 }
 
 #ifdef OLED
@@ -628,24 +494,6 @@ void displayStatisticsLayout()
   u8x8.print(F("Max GPS:"));
   u8x8.setCursor(11, 2);
   u8x8.print(F("km/h"));
-  
-  u8x8.setCursor(0, 3);  
-  if(zeroingCounter > 0)
-  {
-    u8x8.print(F("Zeroing alt"));
-  }
-  else
-  {
-    if(zeroingCounter <= 0)
-    {
-      u8x8.print(FS(clearLine));
-      zeroingCounter -= 1; 
-    }
-    
-    u8x8.print(F("Max GPS:"));
-    u8x8.setCursor(12, 3);
-    u8x8.print(F("m"));
-  }
 #endif
 
 #ifdef TEMP
@@ -664,13 +512,6 @@ void displayStatisticsLayout()
   u8x8.print(F("Max Amp:"));
   u8x8.setCursor(13,6);
   u8x8.print(F("A"));
-#endif
-
-#ifdef AIRSPEED
-  u8x8.setCursor(0,4);
-  u8x8.print(F("Max Air:"));
-  u8x8.setCursor(12,4);
-  u8x8.print(F("km/h"));
 #endif
 }
 #endif
@@ -805,43 +646,6 @@ void clearLines(int startingLine)
 }
 #endif
 
-#ifdef SD_CARD
-void initSDCard()
-{
-  pinMode(pinCS, OUTPUT);
-  SD.begin(pinCS);
-}
-
-void logToSD()
-{
-  //filename from gps https://github.com/SlashDevin/NeoGPS/blob/master/extras/doc/Data%20Model.md#usage
-  myFile = SD.open("test.txt", FILE_WRITE);
-  if (myFile) 
-  {
-//timestamp
-#ifdef GPS_BAUD
-    myFile.print(Height);
-    myFile.print(F(";"));
-    myFile.print(Speed);
-    myFile.print(F(";"));
-#endif
-
-#ifdef TEMP
-    myFile.print(T1);
-    myFile.print(F(";"));
-#endif
-
-#ifdef  BME280
-    myFile.print(PressureAltitude);
-    myFile.println();
-#endif
-
-    myFile.println();
-    myFile.close();
-  }
-}
-#endif
-
 #ifdef GPS_BAUD
 
 void initGPS()
@@ -860,32 +664,14 @@ void readGPS()
     {
       Speed = fix.speed_kph();
     }
-    
-    if(fix.valid.altitude)
-    {
-      Height = (int)gpsAltitudeFilter.updateEstimate(fix.alt.whole);
-    }
   }
 }
 
 void calculateGps()
 {
-  if (numSV >= GPS_MIN_SAT)
+  if (numSV >= GPS_MIN_SAT && Speed > MaxSpeed)
   {
-    if (Speed > MaxSpeed)
-    {
-      MaxSpeed = Speed;
-    }
-    
-    if(Height > 0 && zeroingCounter > 0)
-    {
-      ZeroHeight = Height;
-    }
-    
-    if (Height-ZeroHeight > MaxHeight && zeroingCounter <= 0)
-    {
-      MaxHeight = Height - ZeroHeight;
-    }
+    MaxSpeed = Speed;
   }
 }
 #endif
@@ -906,10 +692,6 @@ void performReadouts()
 
 #ifdef CURRENT_SENSOR
   calculateCurrent();
-#endif
-
-#ifdef AIRSPEED
-  calculateAirSpeed();
 #endif
 
 #ifdef GYRO
@@ -935,45 +717,6 @@ void calculateCurrent()
       MaxCurrent = amps;
 
     lastCurrentReadout = millis();
-  }
-}
-#endif
-
-#ifdef AIRSPEED
-void setupAirSpeed(int port)
-{    
-  for (int ii=0;ii<offsetSize;ii++){
-    delay(ANALOG_READ_DELAY);
-    offset += analogRead(port)-(1023/2);
-  }
-  offset /= offsetSize;
-}
-
-void calculateAirSpeed()
-{	  
-  airSpeed = airSpeedFilter.updateEstimate(calculateRawAirSpeed(airSpeedPin));
-  if(airSpeed > maxAirSpeed)
-    maxAirSpeed = airSpeed;
-}
-
-float calculateRawAirSpeed(int port)
-{
-  delay(ANALOG_READ_DELAY);
-  int rawSensor = analogRead(port) - offset;
-  if(rawSensor > 512 - zeroSpan && rawSensor < 512 + zeroSpan) 
-  {
-    return 0.0;	
-  }
-  else
-  {
-    if (rawSensor < 512)
-    {
-      return (-sqrt((-10000.0*((rawSensor/1024.0)-0.5))/rho)) * 36.0 / 10.0;
-    } 
-    else
-    {
-      return sqrt((10000.0*((rawSensor/1024.0)-0.5))/rho)  * 36.0 / 10.0;
-    }
   }
 }
 #endif
