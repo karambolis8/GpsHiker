@@ -93,14 +93,7 @@ const float VccReference = 5.0;
   float offsetX, offsetY, offsetZ = 0;
 #endif
 
-#ifdef BUTTON_INPUT
-  unsigned long buttonDebounce = 0;
-#else
-  unsigned long lastScreenChange = 0;
-#endif
-
 unsigned long lastPerformedReadouts = 0;
-bool buttonPressed = false;
 
 void setup()
 {  
@@ -129,7 +122,7 @@ void setup()
 
 #ifdef GYRO
 #ifdef OLED
-  u8x8.setCursor(0,5);
+  u8x8.setCursor(0,4);
   u8x8.print(F("Initializing MPU"));
   delay(OLED_SENSOR_CALIBRATION_DELAY);
 #endif
@@ -153,24 +146,13 @@ void initOled()
 #ifdef BUTTON_INPUT
 void initButton()
 {
-  pinMode(BUTTON_INPUT,INPUT);
-  digitalWrite(BUTTON_INPUT,HIGH);
+  pinMode(BUTTON_INPUT,INPUT_PULLUP);
+  attachInterrupt(digitalPinToInterrupt(BUTTON_INPUT), buttonPressed, LOW);
 }
 
-void readButtonPressed()
-{
-  buttonPressed = (digitalRead(BUTTON_INPUT) == 0);
-  
-//  unsigned long now = millis();
-//  if((digitalRead(BUTTON_INPUT) == 0) && now - buttonDebounce >= BUTTON_DELAY)
-//  {
-//  buttonPressed = true;
-//  buttonDebounce = now;
-//  }
-//  else
-//  {
-//    buttonPressed = false;
-//  }   
+void buttonPressed()
+{   
+  currentScreen = ((currentScreen + 1) % 3 ) +1;
 }
 #endif
 
@@ -260,21 +242,8 @@ void loop()
     readGPS();
 #endif
 
-#ifdef BUTTON_INPUT
-  readButtonPressed();
-#else
-  now = millis();
-  if(now - lastScreenChange >= BUTTON_AUTO)
-  {
-    
-    lastScreenChange = now;
-    buttonPressed = true;
-  }
-#endif
-
   performReadouts();
-  lastPerformedReadouts = millis();
-  
+  lastPerformedReadouts = millis();  
 
 #ifdef OLED
   if(doScreenUpdate)
@@ -322,12 +291,6 @@ void updateScreen()
   }
 #endif
 
-  if(buttonPressed && numSV >= GPS_MIN_SAT)
-  {
-    currentScreen = ((currentScreen + 1) % 3 ) +1;
-    buttonPressed = false;
-  }
-
   u8x8.setCursor(15,7);
   if(blink)
     u8x8.print(".");
@@ -369,7 +332,7 @@ void displayCurrentReadouts()
     u8x8.print(FS(space));
   u8x8.print(numSV);
 
-  u8x8.setCursor(8, 2);
+  u8x8.setCursor(8, 3);
   if(Speed <= 99)
     u8x8.print(FS(space));
   if(Speed <= 9)
@@ -406,9 +369,9 @@ void displayCurrentReadoutsLayout()
   u8x8.setCursor(0, 1);
   u8x8.print(F("Sats:"));
   
-  u8x8.setCursor(0, 2);
+  u8x8.setCursor(0, 3);
   u8x8.print(F("GPS Spd:"));
-  u8x8.setCursor(11, 2);
+  u8x8.setCursor(11, 3);
   u8x8.print(F("km/h"));
 #endif
 
@@ -452,7 +415,7 @@ void displayStatistics()
     u8x8.print(FS(space));
   u8x8.print(numSV);
   
-  u8x8.setCursor(8, 2);
+  u8x8.setCursor(8, 3);
   if(MaxSpeed <= 99)
     u8x8.print(FS(space));
   if(MaxSpeed <= 9)
@@ -490,9 +453,9 @@ void displayStatisticsLayout()
   u8x8.setCursor(0, 1); 
   u8x8.print(F("Sats:"));
   
-  u8x8.setCursor(0, 2);
-  u8x8.print(F("Max GPS:"));
-  u8x8.setCursor(11, 2);
+  u8x8.setCursor(0, 3);
+  u8x8.print(F("Max Spd:"));
+  u8x8.setCursor(11, 3);
   u8x8.print(F("km/h"));
 #endif
 
@@ -502,7 +465,7 @@ void displayStatisticsLayout()
 
 #ifdef BME280
   u8x8.setCursor(0,5);
-  u8x8.print(F("Max Bar:"));
+  u8x8.print(F("Max Alt:"));
     u8x8.setCursor(12, 5);
     u8x8.print(F("m"));
 #endif
@@ -557,49 +520,56 @@ void displayMaxTempLayout()
 #ifdef GYRO
 void displayAcceleration()
 {
-  if(refreshDisplay)
-  {
+//  if(refreshDisplay)
+//  {
+//    refreshDisplay = false;
+//  }
+
+
     clearLines(1);
     displayAccelerationLayout();
-    refreshDisplay = false;
-  }
+
+  u8x8.setCursor(5, 1);
+  if(numSV < 10)
+    u8x8.print(FS(space));
+  u8x8.print(numSV);
   
-  u8x8.setCursor(6, 1);
+  u8x8.setCursor(6, 2);
   if(gx < 100)
     u8x8.print(FS(space));
   if(gx < 10)
     u8x8.print(FS(space));    
   u8x8.print(String(gx, 1));
   
-  u8x8.setCursor(6, 2);
+  u8x8.setCursor(6, 3);
   if(gy < 100)
     u8x8.print(FS(space));
   if(gy < 10)
     u8x8.print(FS(space));    
   u8x8.print(String(gy, 1));
   
-  u8x8.setCursor(6, 3);
+  u8x8.setCursor(6, 4);
   if(gz < 100)
     u8x8.print(FS(space));
   if(gz < 10)
     u8x8.print(FS(space));    
   u8x8.print(String(gz, 1));
   
-  u8x8.setCursor(6, 4);
+  u8x8.setCursor(6, 5);
   if(maxGx < 100)
     u8x8.print(FS(space));
   if(maxGx < 10)
     u8x8.print(FS(space));    
   u8x8.print(String(maxGx, 1));
   
-  u8x8.setCursor(6, 5);
+  u8x8.setCursor(6, 6);
   if(maxGy < 100)
     u8x8.print(FS(space));
   if(maxGy < 10)
     u8x8.print(FS(space));    
   u8x8.print(String(maxGy, 1));
   
-  u8x8.setCursor(6, 6);
+  u8x8.setCursor(6, 7);
   if(maxGz < 100)
     u8x8.print(FS(space));
   if(maxGz < 10)
@@ -610,28 +580,31 @@ void displayAcceleration()
 void displayAccelerationLayout()
 {
   u8x8.setCursor(0, 1);
-  u8x8.print(F("Acc X:"));
-  u8x8.setCursor(11, 1);
-  u8x8.print(F("m/s2"));
+  u8x8.print(F("Sats:"));
+  
   u8x8.setCursor(0, 2);
-  u8x8.print(F("Acc Y:"));
+  u8x8.print(F("Acc X:"));
   u8x8.setCursor(11, 2);
   u8x8.print(F("m/s2"));
   u8x8.setCursor(0, 3);
-  u8x8.print(F("Acc Z:"));
+  u8x8.print(F("Acc Y:"));
   u8x8.setCursor(11, 3);
   u8x8.print(F("m/s2"));
   u8x8.setCursor(0, 4);
-  u8x8.print(F("Max X:"));
+  u8x8.print(F("Acc Z:"));
   u8x8.setCursor(11, 4);
   u8x8.print(F("m/s2"));
   u8x8.setCursor(0, 5);
-  u8x8.print(F("Max Y:"));
+  u8x8.print(F("Max X:"));
   u8x8.setCursor(11, 5);
   u8x8.print(F("m/s2"));
   u8x8.setCursor(0, 6);
-  u8x8.print(F("Max Z:"));
+  u8x8.print(F("Max Y:"));
   u8x8.setCursor(11, 6);
+  u8x8.print(F("m/s2"));
+  u8x8.setCursor(0, 7);
+  u8x8.print(F("Max Z:"));
+  u8x8.setCursor(11, 7);
   u8x8.print(F("m/s2"));
 }
 #endif
@@ -702,7 +675,7 @@ void performReadouts()
 #ifdef CURRENT_SENSOR
 void calculateCurrent()
 {
-  if(millis() - lastCurrentReadout >= ANALOG_READ_DELAY)
+  if(millis() - lastCurrentReadout >= ANALOG_READ_DELAY / 2)
   {
     int analogVal = analogRead(currentPin);
     float currentSensorVoltage = ((analogVal - currentOffset) / 1024.0) * VccReference;
