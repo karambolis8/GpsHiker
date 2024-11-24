@@ -58,9 +58,7 @@ const float VccReference = 5.0;
 #endif
 
 #ifdef TEMP
-  #include <SimpleKalmanFilter.h>  
-  SimpleKalmanFilter temp1Filter(1, 1, 0.01);
-
+  #include <SimpleKalmanFilter.h>
   unsigned long lastTempReadout = 0;
   int T1, T1Max = 0;
   int tempPin = 9;
@@ -76,7 +74,9 @@ const float VccReference = 5.0;
 unsigned long lastPerformedReadouts = 0;
 
 void setup()
-{  
+{ 
+  Serial.begin(9600);
+
 #ifdef OLED
   initOled();
   displayHeader();
@@ -100,7 +100,7 @@ void setup()
   initBme();
 #endif
 
-#ifdef DS1820
+#ifdef Sensor_DS18B20
   selected = ds.select(address);
 #endif
 
@@ -153,7 +153,9 @@ void initBme()
 void calculatePressAlt()
 {
   float alt = bme.readAltitude(gndLevelPressure);
-  
+  // Serial.print(alt);
+  // Serial.println("m");
+
   if(isnan(alt))
     return;
   
@@ -484,7 +486,7 @@ void calculateTemp()
 {
   if(millis() - lastTempReadout >= ANALOG_READ_DELAY)
   {
-    T1 = temp1Filter.updateEstimate(calculateRawTemp(tempPin));
+    T1 = calculateRawTemp(tempPin);
     if(T1 > T1Max)
       T1Max = T1;
 
@@ -496,8 +498,13 @@ void calculateTemp()
 int calculateRawTemp(int port)
 {
   if(selected) {
-    return (int)ds.getTempC();
+    float temp = ds.getTempC();
+    Serial.print(temp);
+    Serial.println("*C");
+    return (int)temp;
   }
+  Serial.println("not selected");
+  return 0;
 }
 #endif
 
