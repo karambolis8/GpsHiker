@@ -74,9 +74,7 @@ const float VccReference = 5.0;
 unsigned long lastPerformedReadouts = 0;
 
 void setup()
-{ 
-  Serial.begin(9600);
-
+{
 #ifdef OLED
   initOled();
   displayHeader();
@@ -119,10 +117,11 @@ void initOled()
 #endif
 
 #ifdef BUTTON_INPUT
+//implement debounce https://projecthub.arduino.cc/ronbentley1/button-switch-using-an-external-interrupt-16d57f
 void initButton()
 {
-  pinMode(BUTTON_INPUT,INPUT);
-  attachInterrupt(digitalPinToInterrupt(BUTTON_INPUT), buttonPressed, HIGH);
+  pinMode(BUTTON_INPUT,INPUT_PULLUP);
+  attachInterrupt(digitalPinToInterrupt(BUTTON_INPUT), buttonPressed, LOW);
 }
 
 void buttonPressed()
@@ -153,8 +152,6 @@ void initBme()
 void calculatePressAlt()
 {
   float alt = bme.readAltitude(gndLevelPressure);
-  // Serial.print(alt);
-  // Serial.println("m");
 
   if(isnan(alt))
     return;
@@ -499,11 +496,9 @@ int calculateRawTemp(int port)
 {
   if(selected) {
     float temp = ds.getTempC();
-    Serial.print(temp);
-    Serial.println("*C");
     return (int)temp;
   }
-  Serial.println("not selected");
+  
   return 0;
 }
 #endif
