@@ -1,4 +1,3 @@
-
 #include "Config.h"
 
 const float VccReference = 5.0;
@@ -64,33 +63,14 @@ const float VccReference = 5.0;
 
   unsigned long lastTempReadout = 0;
   int T1, T1Max = 0;
-  int tempPin = 0;
+  int tempPin = 9;
 #endif
 
-#ifdef CURRENT_SENSOR
-  #include <SimpleKalmanFilter.h>
-  SimpleKalmanFilter currentFilter(1, 1, 0.01); 
-  
-#ifdef ACS758_50B
-  int mvPerAmp = 40;
-#endif
-#ifdef ACS712_20B
-  int mvPerAmp = 100;
-#endif
-
-  int currentPin = 1;
-  float MaxCurrent, amps;
-  int currentOffset = -3;
-  unsigned long lastCurrentReadout = 0;
-#endif
-
-#ifdef GYRO
-  #include "Wire.h"
-  #include "MPU6050.h"
-  MPU6050 mpu;
-  float gx, gy, gz, maxGx, maxGy, maxGz = 0;
-  int offsetCalibrationSize = 10;
-  float offsetX, offsetY, offsetZ = 0;
+#ifdef Sensor_DS18B20
+  #include <DS18B20.h>
+  DS18B20 ds(tempPin);
+  uint8_t address[] = {0x28, 0xD, 0x6A, 0x2, 0x26, 0x20, 0x1, 0x25};
+  uint8_t selected;
 #endif
 
 unsigned long lastPerformedReadouts = 0;
@@ -120,13 +100,8 @@ void setup()
   initBme();
 #endif
 
-#ifdef GYRO
-#ifdef OLED
-  u8x8.setCursor(0,4);
-  u8x8.print(F("Initializing MPU"));
-  delay(OLED_SENSOR_CALIBRATION_DELAY);
-#endif
-  initMpu();
+#ifdef DS1820
+  selected = ds.select(address);
 #endif
 
 #ifdef BUTTON_INPUT
@@ -146,8 +121,8 @@ void initOled()
 #ifdef BUTTON_INPUT
 void initButton()
 {
-  pinMode(BUTTON_INPUT,INPUT_PULLUP);
-  attachInterrupt(digitalPinToInterrupt(BUTTON_INPUT), buttonPressed, LOW);
+  pinMode(BUTTON_INPUT,INPUT);
+  attachInterrupt(digitalPinToInterrupt(BUTTON_INPUT), buttonPressed, HIGH);
 }
 
 void buttonPressed()
@@ -189,42 +164,6 @@ void calculatePressAlt()
 }
 #endif
 
-#ifdef GYRO
-void initMpu()
-{
-  mpu.begin(MPU6050_SCALE_2000DPS, MPU6050_RANGE_4G);
-  delay(100);
-  
-  for(int i = 0; i < 10; i++)
-  {
-    Vector accel = mpu.readNormalizeAccel();;
-    offsetX += accel.XAxis;
-    offsetY += accel.YAxis;
-    offsetZ += accel.ZAxis;
-  }
-
-  offsetX /= 10.0;
-  offsetY /= 10.0;
-  offsetZ /= 10.0;
-}
-
-void calculateMpu()
-{
-  Vector accel = mpu.readNormalizeAccel();
-  
-  gx = abs(accel.XAxis - offsetX);
-  if(gx > maxGx)
-    maxGx = gx;
-    
-  gy = abs(accel.YAxis - offsetY);
-  if(gy > maxGy)
-    maxGy = gy;
-    
-  gz = abs(accel.ZAxis - offsetZ);
-  if(gz > maxGz)
-    maxGz = gz;
-}
-#endif
 
 void loop()
 {
@@ -281,12 +220,6 @@ void updateScreen()
     {
       displayCurrentReadouts();
     }
-#ifdef GYRO
-    else if(currentScreen == 3)
-    {
-      displayAcceleration();
-    }
-#endif
 #ifdef GPS_BAUD
   }
 #endif
@@ -354,13 +287,6 @@ void displayCurrentReadouts()
     u8x8.print(FS(space));
   u8x8.print(PressureAltitude);
 #endif
-
-#ifdef CURRENT_SENSOR
-  u8x8.setCursor(4,6);
-  if(amps <= 10)
-      u8x8.print(FS(space));
-  u8x8.print(String(amps, 1));
-#endif
 }
 
 void displayCurrentReadoutsLayout()
@@ -384,13 +310,6 @@ void displayCurrentReadoutsLayout()
   u8x8.print(F("Bar Alt:"));
   u8x8.setCursor(12,5);
   u8x8.print(F("m"));
-#endif
-
-#ifdef CURRENT_SENSOR
-  u8x8.setCursor(0,6);
-  u8x8.print(F("Amp:"));
-  u8x8.setCursor(8,6);
-  u8x8.print(F("A"));
 #endif
 }
 
@@ -437,13 +356,6 @@ void displayStatistics()
     u8x8.print(FS(space));
   u8x8.print(MaxPressureAltitude);
 #endif
-
-#ifdef CURRENT_SENSOR
-  u8x8.setCursor(9,6);
-  if(MaxCurrent <= 10)
-      u8x8.print(FS(space));
-  u8x8.print(String(MaxCurrent, 1));
-#endif
 }
 
 #ifdef OLED
@@ -468,13 +380,6 @@ void displayStatisticsLayout()
   u8x8.print(F("Max Alt:"));
     u8x8.setCursor(12, 5);
     u8x8.print(F("m"));
-#endif
-
-#ifdef CURRENT_SENSOR
-  u8x8.setCursor(0,6);
-  u8x8.print(F("Max Amp:"));
-  u8x8.setCursor(13,6);
-  u8x8.print(F("A"));
 #endif
 }
 #endif
@@ -517,97 +422,6 @@ void displayMaxTempLayout()
 }
 #endif
 
-#ifdef GYRO
-void displayAcceleration()
-{
-//  if(refreshDisplay)
-//  {
-//    refreshDisplay = false;
-//  }
-
-
-    clearLines(1);
-    displayAccelerationLayout();
-
-  u8x8.setCursor(5, 1);
-  if(numSV < 10)
-    u8x8.print(FS(space));
-  u8x8.print(numSV);
-  
-  u8x8.setCursor(6, 2);
-  if(gx < 100)
-    u8x8.print(FS(space));
-  if(gx < 10)
-    u8x8.print(FS(space));    
-  u8x8.print(String(gx, 1));
-  
-  u8x8.setCursor(6, 3);
-  if(gy < 100)
-    u8x8.print(FS(space));
-  if(gy < 10)
-    u8x8.print(FS(space));    
-  u8x8.print(String(gy, 1));
-  
-  u8x8.setCursor(6, 4);
-  if(gz < 100)
-    u8x8.print(FS(space));
-  if(gz < 10)
-    u8x8.print(FS(space));    
-  u8x8.print(String(gz, 1));
-  
-  u8x8.setCursor(6, 5);
-  if(maxGx < 100)
-    u8x8.print(FS(space));
-  if(maxGx < 10)
-    u8x8.print(FS(space));    
-  u8x8.print(String(maxGx, 1));
-  
-  u8x8.setCursor(6, 6);
-  if(maxGy < 100)
-    u8x8.print(FS(space));
-  if(maxGy < 10)
-    u8x8.print(FS(space));    
-  u8x8.print(String(maxGy, 1));
-  
-  u8x8.setCursor(6, 7);
-  if(maxGz < 100)
-    u8x8.print(FS(space));
-  if(maxGz < 10)
-    u8x8.print(FS(space));    
-  u8x8.print(String(maxGz, 1));
-}
-
-void displayAccelerationLayout()
-{
-  u8x8.setCursor(0, 1);
-  u8x8.print(F("Sats:"));
-  
-  u8x8.setCursor(0, 2);
-  u8x8.print(F("Acc X:"));
-  u8x8.setCursor(11, 2);
-  u8x8.print(F("m/s2"));
-  u8x8.setCursor(0, 3);
-  u8x8.print(F("Acc Y:"));
-  u8x8.setCursor(11, 3);
-  u8x8.print(F("m/s2"));
-  u8x8.setCursor(0, 4);
-  u8x8.print(F("Acc Z:"));
-  u8x8.setCursor(11, 4);
-  u8x8.print(F("m/s2"));
-  u8x8.setCursor(0, 5);
-  u8x8.print(F("Max X:"));
-  u8x8.setCursor(11, 5);
-  u8x8.print(F("m/s2"));
-  u8x8.setCursor(0, 6);
-  u8x8.print(F("Max Y:"));
-  u8x8.setCursor(11, 6);
-  u8x8.print(F("m/s2"));
-  u8x8.setCursor(0, 7);
-  u8x8.print(F("Max Z:"));
-  u8x8.setCursor(11, 7);
-  u8x8.print(F("m/s2"));
-}
-#endif
 
 void clearLines(int startingLine)
 {
@@ -662,37 +476,8 @@ void performReadouts()
 #ifdef BME280
   calculatePressAlt();
 #endif
-
-#ifdef CURRENT_SENSOR
-  calculateCurrent();
-#endif
-
-#ifdef GYRO
-  calculateMpu();
-#endif
 }
 
-#ifdef CURRENT_SENSOR
-void calculateCurrent()
-{
-  if(millis() - lastCurrentReadout >= ANALOG_READ_DELAY / 2)
-  {
-    int analogVal = analogRead(currentPin);
-    float currentSensorVoltage = ((analogVal - currentOffset) / 1024.0) * VccReference;
-    float sensorAmps = (currentSensorVoltage - (VccReference/2)) / (mvPerAmp * 0.001);
-    
-    if(sensorAmps < 0)
-      sensorAmps = 0.0;
-  
-    amps = currentFilter.updateEstimate(sensorAmps);
-  
-    if(MaxCurrent < amps)
-      MaxCurrent = amps;
-
-    lastCurrentReadout = millis();
-  }
-}
-#endif
 
 #ifdef TEMP
 void calculateTemp()
@@ -706,6 +491,15 @@ void calculateTemp()
     lastTempReadout = millis();
   }
 }
+
+#ifdef Sensor_DS18B20
+int calculateRawTemp(int port)
+{
+  if(selected) {
+    return (int)ds.getTempC();
+  }
+}
+#endif
 
 #ifdef LM35
 int calculateRawTemp(int port)
