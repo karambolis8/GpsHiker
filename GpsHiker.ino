@@ -1,6 +1,15 @@
 #include "Config.h"
 
-const float VccReference = 5.0;
+#include "Utils.h"
+#include "Temp.h"
+#include "BME280.h"
+#include "TempOled.h"
+#include "BME280Oled.h"
+
+int T1, T1Max = 0;
+unsigned long lastTempReadout = 0;
+int PressureAltitude, MaxPressureAltitude = 0;
+unsigned long lastPerformedReadouts = 0;
 
 #ifdef GPS_BAUD
   #include "NMEAGPS.h"
@@ -24,97 +33,49 @@ const float VccReference = 5.0;
   int numSV = 0;  
 #endif
 
-#ifdef OLED
-  #define FS(x) (__FlashStringHelper*)(x)
-  
-  #include <Wire.h>
-  #include <Arduino.h>
-  #include <U8x8lib.h>
-  
-  U8X8_SSD1306_128X64_NONAME_HW_I2C u8x8(U8X8_PIN_NONE);
-  unsigned long lastScreenUpdate = 0; 
-  bool doScreenUpdate = false;
-  int previousScreen = -1;
-  int currentScreen = 1;
+#include <Wire.h>
+#include <U8x8lib.h>
 
-  const char clearLine[] PROGMEM = { "                " };
-  const char space[] PROGMEM = { " " };
+U8X8_SSD1306_128X64_NONAME_HW_I2C u8x8(U8X8_PIN_NONE);
+unsigned long lastScreenUpdate = 0; 
+bool doScreenUpdate = false;
+int previousScreen = -1;
+int currentScreen = 1;
 
-  bool blink = true;
-#endif
+bool blink = true;
 
-#ifdef BME280
-  #include <Wire.h>
-  #include <Adafruit_Sensor.h>
-  #include <Adafruit_BME280.h>
-  
-  #include <SimpleKalmanFilter.h>
-  SimpleKalmanFilter pressAltFilter(0.03, 0.003, 0.03);
 
-  Adafruit_BME280 bme;
-  int PressureAltitude, MaxPressureAltitude = 0;
-  float gndLevelPressure = 0;
-  int avgSize = 10;
-#endif
-
-#ifdef TEMP
-  #include <SimpleKalmanFilter.h>
-  unsigned long lastTempReadout = 0;
-  int T1, T1Max = 0;
-  int tempPin = 9;
-#endif
-
-#ifdef Sensor_DS18B20
-  #include <DS18B20.h>
-  DS18B20 ds(tempPin);
-  uint8_t address[] = {0x28, 0xD, 0x6A, 0x2, 0x26, 0x20, 0x1, 0x25};
-  uint8_t selected;
-#endif
-
-unsigned long lastPerformedReadouts = 0;
 
 void setup()
 {
-#ifdef OLED
   initOled();
   displayHeader();
-#endif
 
 #ifdef GPS_BAUD
-#ifdef OLED
   u8x8.setCursor(0,2);
   u8x8.print(F("Initializing GPS"));
   delay(OLED_SENSOR_CALIBRATION_DELAY);
-#endif
   initGPS();
 #endif
 
-#ifdef BME280
-#ifdef OLED
   u8x8.setCursor(0,3);
-  u8x8.print(F("Initializing BME"));
+  u8x8.print(F("Initializing BME")); 
   delay(OLED_SENSOR_CALIBRATION_DELAY);
-#endif
   initBme();
-#endif
 
-#ifdef Sensor_DS18B20
-  selected = ds.select(address);
-#endif
+  initTempSensor();
 
 #ifdef BUTTON_INPUT
   initButton();
 #endif
 }
 
-#ifdef OLED
 void initOled()
 {  
   u8x8.begin();
   u8x8.setPowerSave(0);  
   u8x8.setFont(u8x8_font_chroma48medium8_r);
 }
-#endif
 
 #ifdef BUTTON_INPUT
 //implement debounce https://projecthub.arduino.cc/ronbentley1/button-switch-using-an-external-interrupt-16d57f
@@ -130,51 +91,17 @@ void buttonPressed()
 }
 #endif
 
-#ifdef BME280
-void initBme()
-{
-  bme.begin(0x76);
-
-  float gndLeveLAverage = 0.0;
-  
-  for(int i = 0; i < avgSize; i++)
-  {
-    float sensorRawPressure = bme.readPressure();
-    if(isnan(sensorRawPressure))
-      i -= 1;
-    else
-      gndLeveLAverage += sensorRawPressure;
-  }
-  
-  gndLevelPressure = gndLeveLAverage / avgSize * 0.01;
-}
-
-void calculatePressAlt()
-{
-  float alt = bme.readAltitude(gndLevelPressure);
-
-  if(isnan(alt))
-    return;
-  
-  PressureAltitude = (int)pressAltFilter.updateEstimate(alt);
-  
-  if(PressureAltitude > MaxPressureAltitude)
-    MaxPressureAltitude = PressureAltitude;
-}
-#endif
-
 
 void loop()
 {
   unsigned long now = millis();
-#ifdef OLED
+  
   if ( now - lastScreenUpdate < OLED_REFRESH ) {
     doScreenUpdate = false;
   } else {
     doScreenUpdate = true;
     lastScreenUpdate = now;
   }
-#endif
   
 #ifdef GPS_BAUD
     readGPS();
@@ -183,16 +110,13 @@ void loop()
   performReadouts();
   lastPerformedReadouts = millis();  
 
-#ifdef OLED
   if(doScreenUpdate)
   {
     updateScreen();
     lastScreenUpdate = millis();
   }
-#endif
 }
 
-#ifdef OLED
 void updateScreen()
 {
 #ifdef GPS_BAUD
@@ -221,7 +145,6 @@ void updateScreen()
     }
 #ifdef GPS_BAUD
   }
-#endif
 
   u8x8.setCursor(15,7);
   if(blink)
@@ -272,20 +195,8 @@ void displayCurrentReadouts()
   u8x8.print(Speed);
 #endif
 
-#ifdef TEMP
-  displayCurrentTemp();
-#endif
-
-#ifdef BME280
-  u8x8.setCursor(8,5);
-  if(PressureAltitude <= 999)
-    u8x8.print(FS(space));
-  if(PressureAltitude <= 99)
-    u8x8.print(FS(space));
-  if(PressureAltitude <= 9)
-    u8x8.print(FS(space));
-  u8x8.print(PressureAltitude);
-#endif
+  displayCurrentTemp(u8x8, T1);
+  displayCurrentBmeAlt(u8x8, PressureAltitude);
 }
 
 void displayCurrentReadoutsLayout()
@@ -300,16 +211,8 @@ void displayCurrentReadoutsLayout()
   u8x8.print(F("km/h"));
 #endif
 
-#ifdef TEMP
-  displayCurrentTempLayout();
-#endif
-
-#ifdef BME280
-  u8x8.setCursor(0,5);
-  u8x8.print(F("Bar Alt:"));
-  u8x8.setCursor(12,5);
-  u8x8.print(F("m"));
-#endif
+  displayCurrentTempLayout(u8x8);
+  displayCurrentBmeAltLayout(u8x8);
 }
 
 void displayStatistics()
@@ -341,23 +244,10 @@ void displayStatistics()
   u8x8.print(MaxSpeed);
 #endif
 
-#ifdef TEMP
-  displayMaxTemp();
-#endif
-
-#ifdef BME280
-  u8x8.setCursor(8,5);  
-    if(MaxPressureAltitude <= 999)
-    u8x8.print(FS(space));
-  if(MaxPressureAltitude <= 99)
-    u8x8.print(FS(space));
-  if(MaxPressureAltitude <= 9)
-    u8x8.print(FS(space));
-  u8x8.print(MaxPressureAltitude);
-#endif
+  displayMaxTemp(u8x8, T1Max);
+  displayMaxBmeAlt(u8x8, MaxPressureAltitude);
 }
 
-#ifdef OLED
 void displayStatisticsLayout()
 {
   #ifdef GPS_BAUD
@@ -370,57 +260,9 @@ void displayStatisticsLayout()
   u8x8.print(F("km/h"));
 #endif
 
-#ifdef TEMP
-  displayMaxTempLayout();
-#endif
-
-#ifdef BME280
-  u8x8.setCursor(0,5);
-  u8x8.print(F("Max Alt:"));
-    u8x8.setCursor(12, 5);
-    u8x8.print(F("m"));
-#endif
+  displayMaxTempLayout(u8x8);
+  displayMaxBmeAltLayout(u8x8);
 }
-#endif
-
-#ifdef TEMP
-void displayCurrentTemp()
-{
-  u8x8.setCursor(5, 7);  
-  if((T1 <= 99 && T1 > 0) || (T1 < 0 && abs(T1) <= 9))
-    u8x8.print(FS(space));
-  if(T1 > 0 && T1 <= 9)
-    u8x8.print(FS(space));
-  u8x8.print(T1);
-}
-
-void displayCurrentTempLayout()
-{
-  u8x8.setCursor(0, 7);
-  u8x8.print(F("Tmp:"));
-  u8x8.setCursor(8, 7);  
-  u8x8.print(F("C"));
-}
-
-void displayMaxTemp()
-{
-  u8x8.setCursor(9, 7);
-  if((T1Max <= 99 && T1Max > 0) || (T1Max < 0 && abs(T1Max) <= 9))
-    u8x8.print(FS(space));
-  if(T1Max > 0 && T1Max <= 9)
-    u8x8.print(FS(space));
-  u8x8.print(T1Max);
-}
-
-void displayMaxTempLayout()
-{
-  u8x8.setCursor(0, 7);
-  u8x8.print(F("Max Tmp:"));
-  u8x8.setCursor(12, 7); 
-  u8x8.print(F("C"));
-}
-#endif
-
 
 void clearLines(int startingLine)
 {
@@ -464,60 +306,27 @@ void calculateGps()
 
 void performReadouts()
 {
-#ifdef GPS_BAUD
   calculateGps();
-#endif
-
-#ifdef TEMP
   calculateTemp();
-#endif
-
-#ifdef BME280
-  calculatePressAlt();
-#endif
+  calculatePressureAlt();
 }
 
+void calculatePressureAlt()
+{
+  int presureAltReadout = calculateBmeAlt(); 
+  
+  if(presureAltReadout > MaxPressureAltitude)
+    MaxPressureAltitude = presureAltReadout;
+}
 
-#ifdef TEMP
 void calculateTemp()
 {
   if(millis() - lastTempReadout >= ANALOG_READ_DELAY)
   {
-    T1 = calculateRawTemp(tempPin);
+    T1 = calculateRawTemp();
     if(T1 > T1Max)
       T1Max = T1;
 
     lastTempReadout = millis();
   }
 }
-
-#ifdef Sensor_DS18B20
-int calculateRawTemp(int port)
-{
-  if(selected) {
-    float temp = ds.getTempC();
-    return (int)temp;
-  }
-  
-  return 0;
-}
-#endif
-
-#ifdef LM35
-int calculateRawTemp(int port)
-{
-  int readVal = analogRead(port);
-  float volt = readVal * VccReference / 1024.0;
-  return volt * 100.0;
-}
-#endif
-
-#ifdef TMP36
-int calculateRawTemp(int port)
-{
-  int readVal = analogRead(port);
-  float volt = readVal * VccReference / 1024.0 ;
-  return (volt - 0.5) * 100.0;
-}
-#endif
-#endif

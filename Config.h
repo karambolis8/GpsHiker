@@ -13,14 +13,9 @@
 #define OLED_REFRESH 500
 #define OLED_SENSOR_CALIBRATION_DELAY 500
 
-//I2C
-// #define GYRO
-
-//Analog A0
-#define TEMP
 //#define LM35
 //#define TMP36
 #define Sensor_DS18B20
+#define DS18B20_Address {0x28, 0xD, 0x6A, 0x2, 0x26, 0x20, 0x1, 0x25}
 
-//I2C
-#define BME280
+#define BME280_Address 0x76
