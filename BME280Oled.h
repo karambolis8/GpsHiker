@@ -1,6 +1,6 @@
 #include <U8x8lib.h>
 
-void displayCurrentBmeAlt(U8X8_SSD1306_128X64_NONAME_HW_I2C& u8x8, int PressureAltitude)
+void displayBmeAlt(U8X8_SSD1306_128X64_NONAME_HW_I2C& u8x8, int PressureAltitude)
 {  
   u8x8.setCursor(8,5);
   
@@ -16,6 +16,16 @@ void displayCurrentBmeAlt(U8X8_SSD1306_128X64_NONAME_HW_I2C& u8x8, int PressureA
   u8x8.print(PressureAltitude);
 }
 
+void displayBmeHumidity(U8X8_SSD1306_128X64_NONAME_HW_I2C& u8x8, int humidity)
+{  
+  u8x8.setCursor(9,4);
+  
+  if(humidity <= 9)
+    u8x8.print(FS(space));
+  
+  u8x8.print(humidity);
+}
+
 void displayCurrentBmeAltLayout(U8X8_SSD1306_128X64_NONAME_HW_I2C& u8x8)
 {
   u8x8.setCursor(0,5);
@@ -24,20 +34,12 @@ void displayCurrentBmeAltLayout(U8X8_SSD1306_128X64_NONAME_HW_I2C& u8x8)
   u8x8.print(F("m"));
 }
 
-void displayMaxBmeAlt(U8X8_SSD1306_128X64_NONAME_HW_I2C& u8x8, int MaxPressureAltitude)
+void displayCurrentBmeHumidityLayout(U8X8_SSD1306_128X64_NONAME_HW_I2C& u8x8)
 {
-  u8x8.setCursor(8,5);  
-  
-  if(MaxPressureAltitude <= 999)
-    u8x8.print(FS(space));
-  
-  if(MaxPressureAltitude <= 99)
-    u8x8.print(FS(space));
-  
-  if(MaxPressureAltitude <= 9)
-    u8x8.print(FS(space));
-  
-  u8x8.print(MaxPressureAltitude);
+  u8x8.setCursor(0,4);
+  u8x8.print(F("Humidity:"));
+  u8x8.setCursor(11,4);
+  u8x8.print(F("%"));
 }
 
 void displayMaxBmeAltLayout(U8X8_SSD1306_128X64_NONAME_HW_I2C& u8x8)
@@ -46,4 +48,12 @@ void displayMaxBmeAltLayout(U8X8_SSD1306_128X64_NONAME_HW_I2C& u8x8)
   u8x8.print(F("Max Alt:"));
   u8x8.setCursor(12, 5);
   u8x8.print(F("m"));
+}
+
+void displayMaxBmeHumidityLayout(U8X8_SSD1306_128X64_NONAME_HW_I2C& u8x8)
+{
+  u8x8.setCursor(0,4);
+  u8x8.print(F("Max hum:"));
+  u8x8.setCursor(11,4);
+  u8x8.print(F("%"));
 }

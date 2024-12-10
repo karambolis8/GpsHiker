@@ -1,5 +1,12 @@
 
 #define BUTTON_INPUT 2
+#define BUTTON_SWITCHED                            true // value if the button  switch has been pressed
+#define BUTTON_TRIGGERED                          true // controls  interrupt handler
+#define DEBOUNCE                              10  // time to wait in milli secs
+
+volatile  bool interrupt_process_status = {
+  !BUTTON_TRIGGERED                                     // start with no switch press pending,  ie false (!triggered)
+};
 
 #define ANALOG_READ_DELAY 500
 

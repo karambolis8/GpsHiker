@@ -9,11 +9,13 @@
 int T1, T1Max = 0;
 unsigned long lastTempReadout = 0;
 int PressureAltitude, MaxPressureAltitude = 0;
+int Humidity, MaxHumidity, MinHumidity = 0;
 unsigned long lastPerformedReadouts = 0;
 
 #ifdef GPS_BAUD
   #include "NMEAGPS.h"
   #include "GPSport.h"
+  #include "NeoTime.h"
   
   #ifndef NMEAGPS_PARSE_GSV
     #error You must define NMEAGPS_PARSE_GSV in NMEAGPS_cfg.h!
@@ -30,6 +32,11 @@ unsigned long lastPerformedReadouts = 0;
   NMEAGPS  gps;
   gps_fix  fix;
   long Speed, MaxSpeed = 0;
+  int year;
+  int month;
+  int day;
+  int hour;
+  int minutes;
   int numSV = 0;  
 #endif
 
@@ -43,8 +50,6 @@ int previousScreen = -1;
 int currentScreen = 1;
 
 bool blink = true;
-
-
 
 void setup()
 {
@@ -62,12 +67,8 @@ void setup()
   u8x8.print(F("Initializing BME")); 
   delay(OLED_SENSOR_CALIBRATION_DELAY);
   initBme();
-
   initTempSensor();
-
-#ifdef BUTTON_INPUT
   initButton();
-#endif
 }
 
 void initOled()
@@ -77,23 +78,57 @@ void initOled()
   u8x8.setFont(u8x8_font_chroma48medium8_r);
 }
 
-#ifdef BUTTON_INPUT
-//implement debounce https://projecthub.arduino.cc/ronbentley1/button-switch-using-an-external-interrupt-16d57f
 void initButton()
 {
-  pinMode(BUTTON_INPUT,INPUT_PULLUP);
-  attachInterrupt(digitalPinToInterrupt(BUTTON_INPUT), buttonPressed, LOW);
+  pinMode(BUTTON_INPUT, INPUT_PULLUP);
+  attachInterrupt(digitalPinToInterrupt(BUTTON_INPUT), buttonPressed, RISING);
 }
 
 void buttonPressed()
-{   
-  currentScreen = ((currentScreen + 1) % 3 ) +1;
+{
+    if (interrupt_process_status == !BUTTON_TRIGGERED) 
+    {
+      if (digitalRead(BUTTON_INPUT) == HIGH) 
+      {
+        interrupt_process_status  = BUTTON_TRIGGERED;
+      }
+    }
 }
-#endif
 
+bool readButton()
+{
+  int button_reading;
+  
+  static bool     switching_pending = false;
+  static  long int elapse_timer;
+  if (interrupt_process_status == BUTTON_TRIGGERED) 
+  {    
+    button_reading = digitalRead(BUTTON_INPUT);
+    if (button_reading == HIGH)  
+    {
+      switching_pending = true;
+      elapse_timer  = millis();
+    }
+    if (switching_pending  && button_reading == LOW) 
+    {
+      if (millis() - elapse_timer >= DEBOUNCE) 
+      {
+        switching_pending  = false;
+        interrupt_process_status  = !BUTTON_TRIGGERED;
+        return BUTTON_SWITCHED;
+      }
+    }
+  }
+  return !BUTTON_SWITCHED;
+}
 
 void loop()
 {
+  if(readButton())
+  {
+    currentScreen = ((currentScreen + 1) % 3 ) +1;
+  }
+
   unsigned long now = millis();
   
   if ( now - lastScreenUpdate < OLED_REFRESH ) {
@@ -131,20 +166,24 @@ void updateScreen()
     if(numSV < 10)
       u8x8.print(FS(space));
     u8x8.print(numSV);
+    
+    // u8x8.setCursor(15,1);
+    // u8x8.print(currentScreen);
   }
   else
   {
 #endif
-    if(currentScreen == 1)
+    if(currentScreen == 2)
     {
       displayStatistics();
     }
-    else if(currentScreen == 2)
+    else if(currentScreen == 1)
     {
       displayCurrentReadouts();
     }
 #ifdef GPS_BAUD
   }
+#endif
 
   u8x8.setCursor(15,7);
   if(blink)
@@ -187,32 +226,60 @@ void displayCurrentReadouts()
     u8x8.print(FS(space));
   u8x8.print(numSV);
 
+  // u8x8.setCursor(15,1);
+  // u8x8.print(currentScreen);
+
+  u8x8.setCursor(6, 2);
+  u8x8.print(year);  
+  u8x8.print(F("."));
+  u8x8.print(month);
+  u8x8.print(F("."));
+  u8x8.print(day);
+
+  u8x8.setCursor(6, 6);
+  u8x8.print(hour);  
+  u8x8.print(F(":"));
+  u8x8.print(minutes);
+
   u8x8.setCursor(8, 3);
   if(Speed <= 99)
     u8x8.print(FS(space));
   if(Speed <= 9)
     u8x8.print(FS(space));
   u8x8.print(Speed);
+  
 #endif
 
   displayCurrentTemp(u8x8, T1);
-  displayCurrentBmeAlt(u8x8, PressureAltitude);
+  displayBmeAlt(u8x8, PressureAltitude);
+  displayBmeHumidity(u8x8, Humidity);
 }
 
 void displayCurrentReadoutsLayout()
-{    
+{ 
+  displayCurrentGpsData();
+  displayCurrentTempLayout(u8x8);
+  displayCurrentBmeAltLayout(u8x8);
+  displayCurrentBmeHumidityLayout(u8x8);
+}
+
+void displayCurrentGpsData() //U8X8_SSD1306_128X64_NONAME_HW_I2C& u8x8)
+{
 #ifdef GPS_BAUD
   u8x8.setCursor(0, 1);
   u8x8.print(F("Sats:"));
-  
+
+  u8x8.setCursor(0, 2);
+  u8x8.print(F("Date:"));
+
+  u8x8.setCursor(0, 6);
+  u8x8.print(F("Time:"));
+
   u8x8.setCursor(0, 3);
   u8x8.print(F("GPS Spd:"));
   u8x8.setCursor(11, 3);
   u8x8.print(F("km/h"));
 #endif
-
-  displayCurrentTempLayout(u8x8);
-  displayCurrentBmeAltLayout(u8x8);
 }
 
 void displayStatistics()
@@ -235,6 +302,13 @@ void displayStatistics()
   if(numSV < 10)
     u8x8.print(FS(space));
   u8x8.print(numSV);
+
+  u8x8.setCursor(6, 2);
+  u8x8.print(year);  
+  u8x8.print(F("."));
+  u8x8.print(month);
+  u8x8.print(F("."));
+  u8x8.print(day);
   
   u8x8.setCursor(8, 3);
   if(MaxSpeed <= 99)
@@ -245,15 +319,19 @@ void displayStatistics()
 #endif
 
   displayMaxTemp(u8x8, T1Max);
-  displayMaxBmeAlt(u8x8, MaxPressureAltitude);
+  displayBmeAlt(u8x8, MaxPressureAltitude);
+  displayBmeHumidity(u8x8, MaxHumidity);
 }
 
 void displayStatisticsLayout()
 {
   #ifdef GPS_BAUD
   u8x8.setCursor(0, 1); 
-  u8x8.print(F("Sats:"));
-  
+  u8x8.print(F("Sats:"));  
+
+  u8x8.setCursor(0, 2);
+  u8x8.print(F("Date:"));
+
   u8x8.setCursor(0, 3);
   u8x8.print(F("Max Spd:"));
   u8x8.setCursor(11, 3);
@@ -262,6 +340,7 @@ void displayStatisticsLayout()
 
   displayMaxTempLayout(u8x8);
   displayMaxBmeAltLayout(u8x8);
+  displayMaxBmeHumidityLayout(u8x8);
 }
 
 void clearLines(int startingLine)
@@ -272,7 +351,6 @@ void clearLines(int startingLine)
       u8x8.print(FS(clearLine));
     }
 }
-#endif
 
 #ifdef GPS_BAUD
 
@@ -283,6 +361,7 @@ void initGPS()
 
 void readGPS()
 {
+  long readStart = millis();
   while (gps.available( gpsPort )) 
   {
     fix = gps.read();
@@ -292,7 +371,22 @@ void readGPS()
     {
       Speed = fix.speed_kph();
     }
+    if(fix.valid.date)
+    {
+      year = (int)fix.dateTime.year + 2000;
+      month = (int)fix.dateTime.month;
+      day = (int)fix.dateTime.date;
+    }
+    if(fix.valid.time)
+    {
+      hour = (int)fix.dateTime.hours + 1;
+      minutes = (int)fix.dateTime.minutes;
+    }
   }
+
+  Serial.print("GPS read time: ");
+  Serial.print(millis() - readStart);
+  Serial.println("ms");
 }
 
 void calculateGps()
@@ -306,17 +400,32 @@ void calculateGps()
 
 void performReadouts()
 {
+  
+#ifdef GPS_BAUD
   calculateGps();
+#endif
   calculateTemp();
   calculatePressureAlt();
+  calculateHumidity();
 }
 
 void calculatePressureAlt()
 {
-  int presureAltReadout = calculateBmeAlt(); 
+  PressureAltitude = calculateBmeAlt(); 
   
-  if(presureAltReadout > MaxPressureAltitude)
-    MaxPressureAltitude = presureAltReadout;
+  if(PressureAltitude > MaxPressureAltitude)
+    MaxPressureAltitude = PressureAltitude;
+}
+
+void calculateHumidity()
+{
+  Humidity = calculateBmeHumidity();
+  
+  if(Humidity > MaxHumidity)
+    MaxHumidity = Humidity;
+
+  if(Humidity < MinHumidity)
+    MinHumidity = Humidity;
 }
 
 void calculateTemp()

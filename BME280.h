@@ -33,3 +33,9 @@ int calculateBmeAlt()
   float alt = bme.readAltitude(gndLevelPressure);
   return (int)pressAltFilter.updateEstimate(alt);
 }
+
+int calculateBmeHumidity()
+{
+  float h = bme.readHumidity();
+  return (int)h;
+}
