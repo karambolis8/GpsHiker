@@ -166,9 +166,6 @@ void updateScreen()
     if(numSV < 10)
       u8x8.print(FS(space));
     u8x8.print(numSV);
-    
-    // u8x8.setCursor(15,1);
-    // u8x8.print(currentScreen);
   }
   else
   {
@@ -226,8 +223,8 @@ void displayCurrentReadouts()
     u8x8.print(FS(space));
   u8x8.print(numSV);
 
-  // u8x8.setCursor(15,1);
-  // u8x8.print(currentScreen);
+  u8x8.setCursor(15,1);
+  u8x8.print(currentScreen);
 
   u8x8.setCursor(6, 2);
   u8x8.print(year);  
@@ -292,16 +289,14 @@ void displayStatistics()
   }
 
 #ifdef GPS_BAUD
-  if(currentScreen == 2)
-  {
-    clearLines(1);
-    displayStatisticsLayout();  
-  }
 
   u8x8.setCursor(5, 1); 
   if(numSV < 10)
     u8x8.print(FS(space));
   u8x8.print(numSV);
+
+  u8x8.setCursor(15,1);
+  u8x8.print(currentScreen);
 
   u8x8.setCursor(6, 2);
   u8x8.print(year);  
