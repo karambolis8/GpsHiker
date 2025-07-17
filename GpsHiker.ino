@@ -7,6 +7,10 @@
 // napiecie baterii na ekranie zamiast numeru ekranu
 // temperatura max/min
 
+// ekran "TRIP"
+// ekran "STATS"
+// ekran "READOUTS"
+
 //obudowa z wystawieniem USB C ładowania
 //USB mini dostepne do programowania po odkreceniu srubek arduino
 //18650 montowane na trytki
@@ -16,6 +20,7 @@
 //jakas petelka na sznurek/karabinczyk
 //jakis klips do ubrania
 
+
 #include "Config.h"
 
 #include "Utils.h"
@@ -23,12 +28,14 @@
 #include "BME280.h"
 #include "TempOled.h"
 #include "BME280Oled.h"
+#include "Button.h"
 
 int T1, T1Max = 0;
 unsigned long lastTempReadout = 0;
 int PressureAltitude, MaxPressureAltitude = 0;
 int Humidity, MaxHumidity, MinHumidity = 0;
 unsigned long lastPerformedReadouts = 0;
+float volts = 0.0;
 
   #include "NMEAGPS.h"
   #include "GPSport.h"
@@ -55,6 +62,8 @@ unsigned long lastPerformedReadouts = 0;
   int hour;
   int minutes;
   int numSV = 0;
+  int gpsHasFix = false;
+  bool wasGpsFix = false;
 
 #include <Wire.h>
 #include <U8x8lib.h>
@@ -64,13 +73,12 @@ unsigned long lastScreenUpdate = 0;
 bool doScreenUpdate = false;
 int previousScreen = -1;
 int currentScreen = 1;
-
 bool blink = true;
 
 void setup()
 {
   initOled();
-  displayHeader();
+  printHeader();
 
   u8x8.setCursor(0,2);
   u8x8.print(F("Initializing GPS"));
@@ -92,50 +100,6 @@ void initOled()
   u8x8.setFont(u8x8_font_chroma48medium8_r);
 }
 
-void initButton()
-{
-  pinMode(BUTTON_INPUT, INPUT_PULLUP);
-  attachInterrupt(digitalPinToInterrupt(BUTTON_INPUT), buttonPressed, RISING);
-}
-
-void buttonPressed()
-{
-    if (interrupt_process_status == !BUTTON_TRIGGERED) 
-    {
-      if (digitalRead(BUTTON_INPUT) == HIGH) 
-      {
-        interrupt_process_status  = BUTTON_TRIGGERED;
-      }
-    }
-}
-
-bool readButton()
-{
-  int button_reading;
-  
-  static bool switching_pending = false;
-  static  long int elapse_timer;
-  if (interrupt_process_status == BUTTON_TRIGGERED) 
-  {    
-    button_reading = digitalRead(BUTTON_INPUT);
-    if (button_reading == HIGH)  
-    {
-      switching_pending = true;
-      elapse_timer  = millis();
-    }
-    if (switching_pending  && button_reading == LOW) 
-    {
-      if (millis() - elapse_timer >= DEBOUNCE) 
-      {
-        switching_pending  = false;
-        interrupt_process_status  = !BUTTON_TRIGGERED;
-        return BUTTON_SWITCHED;
-      }
-    }
-  }
-  return !BUTTON_SWITCHED;
-}
-
 void loop()
 {
   if(readButton())
@@ -152,9 +116,7 @@ void loop()
     lastScreenUpdate = now;
   }
   
-
   readGPS();
-
   performReadouts();
   lastPerformedReadouts = millis();  
 
@@ -167,28 +129,33 @@ void loop()
 
 void updateScreen()
 {
-  if (numSV < GPS_MIN_SAT)
+  printHeader();
+//6 lines
+//1. Current readouts
+// - Humidity
+// - Temperature
+// - Bar alt (przewyższenie)
+// - GPS alt (nad poziomem morza)
+//2. GPS
+// - Lat
+// - Lon
+// - Heading (stopnie + NWES)
+// - GPS alt (nad poziomem morza)
+// - GPS speed
+//3. Stats
+// - max wysokosc bar
+// - max wysokość gps
+// - max temp
+// - min temp
+// - czas od resetu
+
+  if(currentScreen == 2)
   {
-    if(currentScreen != previousScreen)
-    {
-      printWaitingLayout();
-      currentScreen = previousScreen = 0;
-    }
-    u8x8.setCursor(5,2);
-    if(numSV < 10)
-      u8x8.print(FS(space));
-    u8x8.print(numSV);
+    displayStatistics();
   }
-  else
+  else if(currentScreen == 1)
   {
-    if(currentScreen == 2)
-    {
-      displayStatistics();
-    }
-    else if(currentScreen == 1)
-    {
-      displayCurrentReadouts();
-    }
+    displayCurrentReadouts();
   }
 
   u8x8.setCursor(15,7);
@@ -199,40 +166,75 @@ void updateScreen()
   blink = not blink;
 }
 
-void printWaitingLayout()
+void printHeader()
 {
-    clearLines(1);
-    u8x8.setCursor(0, 1);
-    u8x8.print(F("Waiting for sats"));
-    u8x8.setCursor(0, 2);
-    u8x8.print(F("Sats:"));
-}
-
-void displayHeader()
-{
-  u8x8.setCursor(0,0);
-  u8x8.print(FS(clearLine));
   u8x8.setInverseFont(1);
-  u8x8.print(F("== GPS Logger =="));  
+  u8x8.setCursor(0,0);
+
+  if(wasGpsFix == false && gpsHasFix == false)
+  {
+    u8x8.print(F("Waiting for sats"));
+  }
+  else
+  {
+    u8x8.print(year);  
+    u8x8.print(F("."));
+    if(month < 10)
+    {
+      u8x8.print(0);      
+    }
+    u8x8.print(month);
+    u8x8.print(F("."));
+    if(day < 10)
+    {
+      u8x8.print(0);      
+    }
+    u8x8.print(day);
+    u8x8.print(F("  "));
+    u8x8.setCursor(11, 0);
+    if(hour < 10)
+    {
+      u8x8.print(0);      
+    }
+    u8x8.print(hour);
+    u8x8.print(F(":"));
+    if(minutes < 10)
+    {
+      u8x8.print(0);      
+    }
+    u8x8.print(minutes);
+  }
+
   u8x8.setInverseFont(0);
+
+  u8x8.setCursor(0, 1);
+
+  if(gpsHasFix)
+  {
+    u8x8.print(F("Fix   "));
+  }
+  else
+  {    
+    u8x8.print(F("No fix"));
+  }
+  
+  
+  u8x8.setCursor(7, 1);
+  u8x8.print(F("Batt:"));
+  u8x8.setCursor(12, 1);
+  u8x8.print(volts, 1);
+  u8x8.setCursor(15, 1);
+  u8x8.print(F("v"));
 }
 
 void displayCurrentReadouts()
 {
   if(currentScreen != previousScreen)
   {
-    clearLines(1);
+    clearLines(2);
     displayCurrentReadoutsLayout();
     previousScreen = currentScreen;
   }
-    
-  u8x8.setCursor(5, 1);
-  if(numSV < 10)
-    u8x8.print(FS(space));
-  u8x8.print(numSV);
-
-  u8x8.setCursor(15,1);
-  u8x8.print(currentScreen);
 
   u8x8.setCursor(6, 2);
   u8x8.print(year);  
@@ -242,7 +244,7 @@ void displayCurrentReadouts()
   u8x8.print(day);
 
   u8x8.setCursor(6, 6);
-  u8x8.print(hour);  
+  u8x8.print(hour);
   u8x8.print(F(":"));
   u8x8.print(minutes);
 
@@ -268,9 +270,6 @@ void displayCurrentReadoutsLayout()
 
 void displayCurrentGpsData() //U8X8_SSD1306_128X64_NONAME_HW_I2C& u8x8)
 {
-  u8x8.setCursor(0, 1);
-  u8x8.print(F("Sats:"));
-
   u8x8.setCursor(0, 2);
   u8x8.print(F("Date:"));
 
@@ -291,14 +290,6 @@ void displayStatistics()
     displayStatisticsLayout();
     previousScreen = currentScreen;
   }
-
-  u8x8.setCursor(5, 1); 
-  if(numSV < 10)
-    u8x8.print(FS(space));
-  u8x8.print(numSV);
-
-  u8x8.setCursor(15,1);
-  u8x8.print(currentScreen);
 
   u8x8.setCursor(6, 2);
   u8x8.print(year);  
@@ -321,9 +312,6 @@ void displayStatistics()
 
 void displayStatisticsLayout()
 {
-  u8x8.setCursor(0, 1); 
-  u8x8.print(F("Sats:"));  
-
   u8x8.setCursor(0, 2);
   u8x8.print(F("Date:"));
 
@@ -341,7 +329,7 @@ void clearLines(int startingLine)
 {
     for(startingLine; startingLine < 8; startingLine++)
     {
-      u8x8.setCursor(0,startingLine);
+      u8x8.setCursor(0, startingLine);
       u8x8.print(FS(clearLine));
     }
 }
@@ -354,9 +342,30 @@ void initGPS()
 void readGPS()
 {
   long readStart = millis();
-  while (gps.available( gpsPort )) 
+  if (gps.available( gpsPort )) 
   {
     fix = gps.read();
+
+    if(numSV > GPS_MIN_SAT && gps.sat_count > GPS_MIN_SAT)
+    {
+      gpsHasFix = true;
+      wasGpsFix = true;
+    }
+    else if(numSV < GPS_MIN_SAT && gps.sat_count > GPS_MIN_SAT)
+    {
+      gpsHasFix = true;
+      wasGpsFix = true;
+    }
+    else if(numSV > GPS_MIN_SAT && gps.sat_count < GPS_MIN_SAT)
+    {
+      gpsHasFix = false;
+      wasGpsFix = true;
+    }
+    else
+    {
+      gpsHasFix = false;
+    }
+
     numSV = gps.sat_count;
     
     if(fix.valid.speed)
@@ -371,8 +380,13 @@ void readGPS()
     }
     if(fix.valid.time)
     {
-      hour = (int)fix.dateTime.hours + 1;
+      hour = (int)fix.dateTime.hours + 2;
       minutes = (int)fix.dateTime.minutes;
+
+      if(SUMMER_TIME)
+      {
+        hour -= 1;
+      }
     }
   }
 
@@ -395,6 +409,12 @@ void performReadouts()
   calculateTemp();
   calculatePressureAlt();
   calculateHumidity();
+  calculateBattery();
+}
+
+void calculateBattery()
+{
+  volts = 4.2;
 }
 
 void calculatePressureAlt()
