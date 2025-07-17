@@ -1,3 +1,21 @@
+// zrobić refactor ekranów (osono rozne pomiary, osobno rozne statystyki, zmiana tytulu zoltego)
+// dodać obsługe dodatkowego buttona do resetu (początek wędrówki - liczenie czasu, wysokości, zejść i podejść)
+// lon lat heading
+// sprawdzic czy button zle sie zachowuje tez jak go zastapic stykaniem kabelkow (moze zle siedzi w plytce)
+// sync GPS readout 100ms
+// nie dziala dobrze timezone (dodac ekran ustawien)
+// napiecie baterii na ekranie zamiast numeru ekranu
+// temperatura max/min
+
+//obudowa z wystawieniem USB C ładowania
+//USB mini dostepne do programowania po odkreceniu srubek arduino
+//18650 montowane na trytki
+//wstawienie jakies TMP sensora na krawedzi obudowy
+//wentylacja jaklas dla BMP z siateczka (mozna zrobic motyw z pause print i podlozeniem siateczki np z herbaty do zadrukowania)
+//jakies narozniki czy cos takiego z TPU
+//jakas petelka na sznurek/karabinczyk
+//jakis klips do ubrania
+
 #include "Config.h"
 
 #include "Utils.h"
@@ -12,7 +30,6 @@ int PressureAltitude, MaxPressureAltitude = 0;
 int Humidity, MaxHumidity, MinHumidity = 0;
 unsigned long lastPerformedReadouts = 0;
 
-#ifdef GPS_BAUD
   #include "NMEAGPS.h"
   #include "GPSport.h"
   #include "NeoTime.h"
@@ -37,8 +54,7 @@ unsigned long lastPerformedReadouts = 0;
   int day;
   int hour;
   int minutes;
-  int numSV = 0;  
-#endif
+  int numSV = 0;
 
 #include <Wire.h>
 #include <U8x8lib.h>
@@ -56,12 +72,10 @@ void setup()
   initOled();
   displayHeader();
 
-#ifdef GPS_BAUD
   u8x8.setCursor(0,2);
   u8x8.print(F("Initializing GPS"));
   delay(OLED_SENSOR_CALIBRATION_DELAY);
   initGPS();
-#endif
 
   u8x8.setCursor(0,3);
   u8x8.print(F("Initializing BME")); 
@@ -99,7 +113,7 @@ bool readButton()
 {
   int button_reading;
   
-  static bool     switching_pending = false;
+  static bool switching_pending = false;
   static  long int elapse_timer;
   if (interrupt_process_status == BUTTON_TRIGGERED) 
   {    
@@ -138,9 +152,8 @@ void loop()
     lastScreenUpdate = now;
   }
   
-#ifdef GPS_BAUD
-    readGPS();
-#endif
+
+  readGPS();
 
   performReadouts();
   lastPerformedReadouts = millis();  
@@ -154,7 +167,6 @@ void loop()
 
 void updateScreen()
 {
-#ifdef GPS_BAUD
   if (numSV < GPS_MIN_SAT)
   {
     if(currentScreen != previousScreen)
@@ -169,7 +181,6 @@ void updateScreen()
   }
   else
   {
-#endif
     if(currentScreen == 2)
     {
       displayStatistics();
@@ -178,9 +189,7 @@ void updateScreen()
     {
       displayCurrentReadouts();
     }
-#ifdef GPS_BAUD
   }
-#endif
 
   u8x8.setCursor(15,7);
   if(blink)
@@ -217,7 +226,6 @@ void displayCurrentReadouts()
     previousScreen = currentScreen;
   }
     
-#ifdef GPS_BAUD
   u8x8.setCursor(5, 1);
   if(numSV < 10)
     u8x8.print(FS(space));
@@ -244,8 +252,6 @@ void displayCurrentReadouts()
   if(Speed <= 9)
     u8x8.print(FS(space));
   u8x8.print(Speed);
-  
-#endif
 
   displayCurrentTemp(u8x8, T1);
   displayBmeAlt(u8x8, PressureAltitude);
@@ -262,7 +268,6 @@ void displayCurrentReadoutsLayout()
 
 void displayCurrentGpsData() //U8X8_SSD1306_128X64_NONAME_HW_I2C& u8x8)
 {
-#ifdef GPS_BAUD
   u8x8.setCursor(0, 1);
   u8x8.print(F("Sats:"));
 
@@ -276,7 +281,6 @@ void displayCurrentGpsData() //U8X8_SSD1306_128X64_NONAME_HW_I2C& u8x8)
   u8x8.print(F("GPS Spd:"));
   u8x8.setCursor(11, 3);
   u8x8.print(F("km/h"));
-#endif
 }
 
 void displayStatistics()
@@ -287,8 +291,6 @@ void displayStatistics()
     displayStatisticsLayout();
     previousScreen = currentScreen;
   }
-
-#ifdef GPS_BAUD
 
   u8x8.setCursor(5, 1); 
   if(numSV < 10)
@@ -311,7 +313,6 @@ void displayStatistics()
   if(MaxSpeed <= 9)
     u8x8.print(FS(space));
   u8x8.print(MaxSpeed);
-#endif
 
   displayMaxTemp(u8x8, T1Max);
   displayBmeAlt(u8x8, MaxPressureAltitude);
@@ -320,7 +321,6 @@ void displayStatistics()
 
 void displayStatisticsLayout()
 {
-  #ifdef GPS_BAUD
   u8x8.setCursor(0, 1); 
   u8x8.print(F("Sats:"));  
 
@@ -331,7 +331,6 @@ void displayStatisticsLayout()
   u8x8.print(F("Max Spd:"));
   u8x8.setCursor(11, 3);
   u8x8.print(F("km/h"));
-#endif
 
   displayMaxTempLayout(u8x8);
   displayMaxBmeAltLayout(u8x8);
@@ -346,8 +345,6 @@ void clearLines(int startingLine)
       u8x8.print(FS(clearLine));
     }
 }
-
-#ifdef GPS_BAUD
 
 void initGPS()
 {
@@ -391,14 +388,10 @@ void calculateGps()
     MaxSpeed = Speed;
   }
 }
-#endif
 
 void performReadouts()
 {
-  
-#ifdef GPS_BAUD
   calculateGps();
-#endif
   calculateTemp();
   calculatePressureAlt();
   calculateHumidity();
