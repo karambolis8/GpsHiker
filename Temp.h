@@ -6,6 +6,13 @@ const float VccReference = 5.0;
 
 #define SensorDigitalPin 9
 
+struct TemperatureSensor {
+  int currentTemp;
+  int maxTemp;
+  int minTemp;
+  unsigned long lastReadout;
+};
+
 uint8_t address[] = DS18B20_Address;
 uint8_t selected;
 
@@ -52,3 +59,23 @@ int calculateRawTemp()
   return (volt - 0.5) * 100.0;
 }
 #endif
+
+void calculateTemp(TemperatureSensor* temperatureReadouts)
+{
+  if(millis() - temperatureReadouts->lastReadout >= ANALOG_READ_DELAY)
+  {
+    temperatureReadouts->currentTemp = calculateRawTemp();
+
+    if(temperatureReadouts->currentTemp > temperatureReadouts->maxTemp)
+    {
+      temperatureReadouts->maxTemp = temperatureReadouts->currentTemp ;
+    }
+
+    if(temperatureReadouts->currentTemp < temperatureReadouts->minTemp)
+    {
+      temperatureReadouts->minTemp = temperatureReadouts->currentTemp ;
+    }
+
+    temperatureReadouts->lastReadout = millis();
+  }
+}

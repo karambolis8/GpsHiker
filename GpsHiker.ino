@@ -10,15 +10,6 @@
 
 // napięcie bateryjki z mryganiem przy 2.7V
 
-// przeniesc kod GPS do osobnego pliku .h
-
-// zrobić refactor obiektów statystyk do structów tak jak w przykladzie liczneia dystansu
-// bo juz bardzo ciezko sie polapac
-// struct Odometer {
-//   NeoGPS::Location_t lastLocation;
-//   float totalDistance;
-// };
-
 //obudowa z wystawieniem USB C ładowania
 //USB mini dostepne do programowania po odkreceniu srubek arduino
 //18650 montowane na trytki
@@ -28,8 +19,6 @@
 //jakas petelka na sznurek/karabinczyk
 //jakis klips do ubrania
 
-
-
 #include "Config.h"
 
 #include "Utils.h"
@@ -38,44 +27,15 @@
 #include "TempOled.h"
 #include "BME280Oled.h"
 #include "Button.h"
-
-int T1, T1Max = 0;
-unsigned long lastTempReadout = 0;
-int PressureAltitude, MaxPressureAltitude = 0;
-int Humidity, MaxHumidity, MinHumidity = 0;
-unsigned long lastPerformedReadouts = 0;
-float volts = 0.0;
-
-  #include "NMEAGPS.h"
-  #include "GPSport.h"
-  #include "NeoTime.h"
-  
-  #ifndef NMEAGPS_PARSE_GSV
-    #error You must define NMEAGPS_PARSE_GSV in NMEAGPS_cfg.h!
-  #endif
-  
-  #ifndef NMEAGPS_PARSE_SATELLITES
-    #error You must define NMEAGPS_PARSE_SATELLITE in NMEAGPS_cfg.h!
-  #endif
-  
-  #ifndef NMEAGPS_PARSE_SATELLITE_INFO
-    #error You must define NMEAGPS_PARSE_SATELLITE_INFO in NMEAGPS_cfg.h!
-  #endif
-
-  NMEAGPS  gps;
-  gps_fix  fix;
-  long Speed, MaxSpeed = 0;
-  int year;
-  int month;
-  int day;
-  int hour;
-  int minutes;
-  int numSV = 0;
-  int gpsHasFix = false;
-  bool wasGpsFix = false;
-
+#include "GPS.h"
 #include <Wire.h>
 #include <U8x8lib.h>
+
+struct TemperatureSensor temperatureReadouts;
+struct Bme280Sensor bme280SensorReadouts;
+struct GpsReadouts gpsReadouts;
+
+float volts = 0.0;
 
 U8X8_SSD1306_128X64_NONAME_HW_I2C u8x8(U8X8_PIN_NONE);
 unsigned long lastScreenUpdate = 0; 
@@ -126,8 +86,7 @@ void loop()
   }
   
   readGPS();
-  performReadouts();
-  lastPerformedReadouts = millis();  
+  performReadouts(); 
 
   if(doScreenUpdate)
   {
@@ -348,123 +307,14 @@ void clearLines(int startingLine)
     }
 }
 
-void initGPS()
-{
-  gpsPort.begin(GPS_BAUD);
-}
-
-void readGPS()
-{
-  long readStart = millis();
-  if (gps.available( gpsPort )) 
-  {
-    fix = gps.read();
-
-    Serial.println(fix.latitude());
-    Serial.println(fix.longitude());
-    Serial.println(fix.alt.whole);
-    Serial.println(fix.heading_cd());
-    Serial.println(fix.satellites);
-    Serial.println(gps.sat_count);
-
-    if(numSV > GPS_MIN_SAT && gps.sat_count > GPS_MIN_SAT)
-    {
-      gpsHasFix = true;
-      wasGpsFix = true;
-    }
-    else if(numSV < GPS_MIN_SAT && gps.sat_count > GPS_MIN_SAT)
-    {
-      gpsHasFix = true;
-      wasGpsFix = true;
-    }
-    else if(numSV > GPS_MIN_SAT && gps.sat_count < GPS_MIN_SAT)
-    {
-      gpsHasFix = false;
-      wasGpsFix = true;
-    }
-    else
-    {
-      gpsHasFix = false;
-    }
-
-    numSV = gps.sat_count;
-    
-    if(fix.valid.speed)
-    {
-      Speed = fix.speed_kph();
-    }
-    if(fix.valid.date)
-    {
-      year = (int)fix.dateTime.year + 2000;
-      month = (int)fix.dateTime.month;
-      day = (int)fix.dateTime.date;
-    }
-    if(fix.valid.time)
-    {
-      hour = (int)fix.dateTime.hours + TIMEZONE_OFFSET;
-      minutes = (int)fix.dateTime.minutes;
-
-      if(SUMMER_TIME)
-      {
-        hour += 1;
-      }
-    }
-  }
-
-  Serial.print("GPS read time: ");
-  Serial.print(millis() - readStart);
-  Serial.println("ms");
-}
-
-void calculateGps()
-{
-  if (numSV >= GPS_MIN_SAT && Speed > MaxSpeed)
-  {
-    MaxSpeed = Speed;
-  }
-}
-
 void performReadouts()
 {
-  calculateGps();
-  calculateTemp();
-  calculatePressureAlt();
-  calculateHumidity();
+  calculateTemp(&temperatureReadouts);
+  calculatePressureHumidity(&bme280SensorReadouts);
   calculateBattery();
 }
 
 void calculateBattery()
 {
   volts = 4.2;
-}
-
-void calculatePressureAlt()
-{
-  PressureAltitude = calculateBmeAlt(); 
-  
-  if(PressureAltitude > MaxPressureAltitude)
-    MaxPressureAltitude = PressureAltitude;
-}
-
-void calculateHumidity()
-{
-  Humidity = calculateBmeHumidity();
-  
-  if(Humidity > MaxHumidity)
-    MaxHumidity = Humidity;
-
-  if(Humidity < MinHumidity)
-    MinHumidity = Humidity;
-}
-
-void calculateTemp()
-{
-  if(millis() - lastTempReadout >= ANALOG_READ_DELAY)
-  {
-    T1 = calculateRawTemp();
-    if(T1 > T1Max)
-      T1Max = T1;
-
-    lastTempReadout = millis();
-  }
 }
