@@ -19,6 +19,12 @@
 //jakas petelka na sznurek/karabinczyk
 //jakis klips do ubrania
 
+// Latitude:
+// Ranges from -90 to +90, with positive values indicating North and negative values indicating South of the equator.
+// Longitude:
+// Ranges from -180 to +180, with positive values indicating East and negative values indicating West of the Prime Meridian.
+
+
 #include "Config.h"
 
 #include "Utils.h"
