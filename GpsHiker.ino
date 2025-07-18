@@ -31,22 +31,25 @@
 #include <Wire.h>
 #include <U8x8lib.h>
 
+struct ScreenUpdate {
+  unsigned long lastScreenUpdate;
+  bool doScreenUpdate;
+  int previousScreen;
+  int currentScreen;
+  bool blink;
+}
+
 struct TemperatureSensor temperatureReadouts;
 struct Bme280Sensor bme280SensorReadouts;
 struct GpsReadouts gpsReadouts;
-
 float volts = 0.0;
-
 U8X8_SSD1306_128X64_NONAME_HW_I2C u8x8(U8X8_PIN_NONE);
-unsigned long lastScreenUpdate = 0; 
-bool doScreenUpdate = false;
-int previousScreen = -1;
-int currentScreen = 1;
-bool blink = true;
+struct ScreenUpdate screenUpdate = {0, false, -1, 0, true};
 
 void setup()
 {
   initOled();
+  initButton();
   printHeader();
 
   u8x8.setCursor(0,2);
@@ -58,8 +61,11 @@ void setup()
   u8x8.print(F("Initializing BME")); 
   delay(OLED_SENSOR_CALIBRATION_DELAY);
   initBme();
+  
+  u8x8.setCursor(0,4);
+  u8x8.print(F("Initializing TMP")); 
+  delay(OLED_SENSOR_CALIBRATION_DELAY);
   initTempSensor();
-  initButton();
 }
 
 void initOled()
@@ -73,62 +79,50 @@ void loop()
 {
   if(readButton())
   {
-    currentScreen = ((currentScreen + 1) % 3 ) +1; //tutaj jest zle dlatego sie nie zmienia
+    screenUpdate.currentScreen = ((screenUpdate.currentScreen + 1) % 3);
   }
 
   unsigned long now = millis();
   
-  if ( now - lastScreenUpdate < OLED_REFRESH ) {
-    doScreenUpdate = false;
+  if ( now - screenUpdate.lastScreenUpdate < OLED_REFRESH ) {
+    screenUpdate.doScreenUpdate = false;
   } else {
-    doScreenUpdate = true;
-    lastScreenUpdate = now;
+    screenUpdate.doScreenUpdate = true;
+    screenUpdate.lastScreenUpdate = now;
   }
   
-  readGPS(&gpsReadouts);
   performReadouts(); 
 
-  if(doScreenUpdate)
+  if(screenUpdate.doScreenUpdate)
   {
     updateScreen();
-    lastScreenUpdate = millis();
+    screenUpdate.lastScreenUpdate = millis();
   }
+}
+
+void performReadouts()
+{
+  readGPS(&gpsReadouts);
+  calculateTemp(&temperatureReadouts);
+  calculatePressureHumidity(&bme280SensorReadouts);
+  calculateBattery();
 }
 
 void updateScreen()
 {
   printHeader();
-//6 lines
 
-//1. Current readouts
-// - Bar alt (przewyższenie)
-// - GPS alt (nad poziomem morza)
-// - Temperature + Humidity
-// - path kilometers
-// - lat lon short
-
-//2. GPS
-// - Lat
-// - Lon
-// - Heading (stopnie + NWES)
-// - GPS alt (nad poziomem morza)
-// - GPS speed
-// - numsat
-
-//3. Stats
-// - max wysokosc bar
-// - max wysokość gps
-// - max temp + min temp
-// - czas od resetu
-// - path kilometers
-
-  if(currentScreen == 2)
-  {
-    displayStatistics();
-  }
-  else if(currentScreen == 1)
+  if(screenUpdate.currentScreen == 0)
   {
     displayCurrentReadouts();
+  }
+  else if(screenUpdate.currentScreen == 1)
+  {
+    displayCurrentGpsData();
+  }
+  else
+  {
+    displayStatistics();
   }
 
   u8x8.setCursor(15,7);
@@ -136,7 +130,7 @@ void updateScreen()
     u8x8.print(".");
   else
     u8x8.print(" ");
-  blink = not blink;
+  screenUpdate.blink = not screenUpdate.blink;
 }
 
 void printHeader()
@@ -189,8 +183,7 @@ void printHeader()
   else
   {    
     u8x8.print(F("No fix"));
-  }
-  
+  }  
   
   u8x8.setCursor(7, 1);
   u8x8.print(F("Batt:"));
@@ -202,34 +195,68 @@ void printHeader()
 
 void displayCurrentReadouts()
 {
-  if(currentScreen != previousScreen)
+//1. Current readouts
+// - Bar alt (przewyższenie)
+// - GPS alt (nad poziomem morza)
+// - Temperature + Humidity
+// - path kilometers
+// - lat lon short
+
+ if(screenUpdate.currentScreen != screenUpdate.previousScreen)
   {
     clearLines(2);
     displayCurrentReadoutsLayout();
-    previousScreen = currentScreen;
+    screenUpdate.previousScreen = screenUpdate.currentScreen;
   }
+  u8x8.setCursor(0, 3);
+  u8x8.print(F("BME Alt:"));
+  u8x8.setCursor(12,3);
+  u8x8.print(F("m"));
 
-  u8x8.setCursor(8, 3);
-  if(gpsReadouts.speed <= 99)
-    u8x8.print(FS(space));
-  if(gpsReadouts.speed <= 9)
-    u8x8.print(FS(space));
-  u8x8.print(gpsReadouts.speed);
+  u8x8.setCursor(0, 4);
+  u8x8.print(F("GPS Alt:"));
+  u8x8.setCursor(9, 4);
+  u8x8.print(gpsReadouts.fix.alt.whole);
+  u8x8.print(F("m"));
 
-  displayCurrentTemp(u8x8, temperatureReadouts.currentTemp);
-  displayBmeAlt(u8x8, bme280SensorReadouts.pressureAltitude);
-  displayBmeHumidity(u8x8, bme280SensorReadouts.humidity);
+  u8x8.setCursor(0, 5);
+  u8x8.print(temperatureReadouts.currentTemp);
+  u8x8.print(F("C"));
+  u8x8.setCursor(12, 5);
+  u8x8.print(bme280SensorReadouts.humidity);
+  u8x8.print(F("%"));
+
+  u8x8.setCursor(0, 7);
+  u8x8.print(gpsReadouts.fix.latitude(), 5);
+  u8x8.setCursor(7, 7);
+  u8x8.print(gpsReadouts.fix.longitude(), 5);
 }
 
 void displayCurrentReadoutsLayout()
 { 
-  displayCurrentGpsData();
-  displayCurrentTempLayout(u8x8);
-  displayCurrentBmeAltLayout(u8x8);
-  displayCurrentBmeHumidityLayout(u8x8);
+  // displayCurrentGpsDataLayout();
+  // displayCurrentTempLayout(u8x8);
+  // displayCurrentBmeAltLayout(u8x8);
+  // displayCurrentBmeHumidityLayout(u8x8);
 }
 
-void displayCurrentGpsData() //U8X8_SSD1306_128X64_NONAME_HW_I2C& u8x8)
+void displayCurrentGpsData()
+{  
+//2. GPS
+// - Lat
+// - Lon
+// - Heading (stopnie + NWES)
+// - GPS alt (nad poziomem morza)
+// - GPS speed
+// - numsatif(currentScreen != previousScreen)
+  {
+    clearLines(2);
+    displayCurrentGpsDataLayout();
+    screenUpdate.previousScreen = screenUpdate.currentScreen;
+  }
+}
+
+void displayCurrentGpsDataLayout()
 {
   u8x8.setCursor(0, 2);
   u8x8.print(F("Date:"));
@@ -245,11 +272,17 @@ void displayCurrentGpsData() //U8X8_SSD1306_128X64_NONAME_HW_I2C& u8x8)
 
 void displayStatistics()
 {
-  if(currentScreen != previousScreen)
+//3. Stats
+// - max wysokosc bar
+// - max wysokość gps
+// - max temp + min temp
+// - czas od resetu
+// - path kilometers
+  if(screenUpdate.currentScreen != screenUpdate.previousScreen)
   {
     clearLines(1);
     displayStatisticsLayout();
-    previousScreen = currentScreen;
+    screenUpdate.previousScreen = screenUpdate.currentScreen;
   }
   
   u8x8.setCursor(8, 3);
@@ -286,13 +319,6 @@ void clearLines(int startingLine)
       u8x8.setCursor(0, startingLine);
       u8x8.print(FS(clearLine));
     }
-}
-
-void performReadouts()
-{
-  calculateTemp(&temperatureReadouts);
-  calculatePressureHumidity(&bme280SensorReadouts);
-  calculateBattery();
 }
 
 void calculateBattery()

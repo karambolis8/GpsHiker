@@ -18,7 +18,7 @@ volatile  bool interrupt_process_status = {
 //I2C
 #define OLED
 #define OLED_REFRESH 500
-#define OLED_SENSOR_CALIBRATION_DELAY 500
+#define OLED_SENSOR_CALIBRATION_DELAY 1000
 
 //#define LM35
 //#define TMP36
