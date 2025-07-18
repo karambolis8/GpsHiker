@@ -27,4 +27,5 @@ volatile  bool interrupt_process_status = {
 
 #define BME280_Address 0x76
 
+#define TIMEZONE_OFFSET 1
 #define SUMMER_TIME true

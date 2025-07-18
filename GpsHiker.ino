@@ -1,11 +1,23 @@
-// zrobić refactor ekranów (osono rozne pomiary, osobno rozne statystyki, zmiana tytulu zoltego)
 // dodać obsługe dodatkowego buttona do resetu (początek wędrówki - liczenie czasu, wysokości, zejść i podejść)
-// lon lat heading
+
 // sprawdzic czy button zle sie zachowuje tez jak go zastapic stykaniem kabelkow (moze zle siedzi w plytce)
+
 // sync GPS readout 100ms
-// nie dziala dobrze timezone (dodac ekran ustawien)
-// napiecie baterii na ekranie zamiast numeru ekranu
-// temperatura max/min
+
+// liczenie drogi
+// - https://github.com/SlashDevin/NeoGPS/blob/master/extras/doc/Location.md
+// - https://github.com/SlashDevin/NeoGPS/issues/15
+
+// napięcie bateryjki z mryganiem przy 2.7V
+
+// przeniesc kod GPS do osobnego pliku .h
+
+// zrobić refactor obiektów statystyk do structów tak jak w przykladzie liczneia dystansu
+// bo juz bardzo ciezko sie polapac
+// struct Odometer {
+//   NeoGPS::Location_t lastLocation;
+//   float totalDistance;
+// };
 
 //obudowa z wystawieniem USB C ładowania
 //USB mini dostepne do programowania po odkreceniu srubek arduino
@@ -16,7 +28,6 @@
 //jakas petelka na sznurek/karabinczyk
 //jakis klips do ubrania
 
-//https://docs.arduino.cc/learn/programming/eeprom-guide/
 
 
 #include "Config.h"
@@ -390,12 +401,12 @@ void readGPS()
     }
     if(fix.valid.time)
     {
-      hour = (int)fix.dateTime.hours + 2;
+      hour = (int)fix.dateTime.hours + TIMEZONE_OFFSET;
       minutes = (int)fix.dateTime.minutes;
 
       if(SUMMER_TIME)
       {
-        hour -= 1;
+        hour += 1;
       }
     }
   }
