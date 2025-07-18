@@ -2,7 +2,7 @@
 
 // sprawdzic czy button zle sie zachowuje tez jak go zastapic stykaniem kabelkow (moze zle siedzi w plytce)
 
-// sync GPS readout 100ms
+// sync GPS readout 100ms (policzyć serial monitorem)
 
 // liczenie drogi
 // - https://github.com/SlashDevin/NeoGPS/blob/master/extras/doc/Location.md
