@@ -73,7 +73,7 @@ void loop()
 {
   if(readButton())
   {
-    currentScreen = ((currentScreen + 1) % 3 ) +1;
+    currentScreen = ((currentScreen + 1) % 3 ) +1; //tutaj jest zle dlatego sie nie zmienia
   }
 
   unsigned long now = millis();
@@ -85,7 +85,7 @@ void loop()
     lastScreenUpdate = now;
   }
   
-  readGPS();
+  readGPS(&gpsReadouts);
   performReadouts(); 
 
   if(doScreenUpdate)
@@ -144,45 +144,45 @@ void printHeader()
   u8x8.setInverseFont(1);
   u8x8.setCursor(0,0);
 
-  if(wasGpsFix == false && gpsHasFix == false)
+  if(gpsReadouts.wasGpsFix == false && gpsReadouts.gpsHasFix == false)
   {
     u8x8.print(F("Waiting for sats"));
   }
   else
   {
-    u8x8.print(year);  
+    u8x8.print(gpsReadouts.year);  
     u8x8.print(F("."));
-    if(month < 10)
+    if(gpsReadouts.month < 10)
     {
       u8x8.print(0);      
     }
-    u8x8.print(month);
+    u8x8.print(gpsReadouts.month);
     u8x8.print(F("."));
-    if(day < 10)
+    if(gpsReadouts.day < 10)
     {
       u8x8.print(0);      
     }
-    u8x8.print(day);
+    u8x8.print(gpsReadouts.day);
     u8x8.print(F("  "));
     u8x8.setCursor(11, 0);
-    if(hour < 10)
+    if(gpsReadouts.hour < 10)
     {
       u8x8.print(0);      
     }
-    u8x8.print(hour);
+    u8x8.print(gpsReadouts.hour);
     u8x8.print(F(":"));
-    if(minutes < 10)
+    if(gpsReadouts.minutes < 10)
     {
       u8x8.print(0);      
     }
-    u8x8.print(minutes);
+    u8x8.print(gpsReadouts.minutes);
   }
 
   u8x8.setInverseFont(0);
 
   u8x8.setCursor(0, 1);
 
-  if(gpsHasFix)
+  if(gpsReadouts.gpsHasFix)
   {
     u8x8.print(F("Fix   "));
   }
@@ -209,28 +209,16 @@ void displayCurrentReadouts()
     previousScreen = currentScreen;
   }
 
-  u8x8.setCursor(6, 2);
-  u8x8.print(year);  
-  u8x8.print(F("."));
-  u8x8.print(month);
-  u8x8.print(F("."));
-  u8x8.print(day);
-
-  u8x8.setCursor(6, 6);
-  u8x8.print(hour);
-  u8x8.print(F(":"));
-  u8x8.print(minutes);
-
   u8x8.setCursor(8, 3);
-  if(Speed <= 99)
+  if(gpsReadouts.speed <= 99)
     u8x8.print(FS(space));
-  if(Speed <= 9)
+  if(gpsReadouts.speed <= 9)
     u8x8.print(FS(space));
-  u8x8.print(Speed);
+  u8x8.print(gpsReadouts.speed);
 
-  displayCurrentTemp(u8x8, T1);
-  displayBmeAlt(u8x8, PressureAltitude);
-  displayBmeHumidity(u8x8, Humidity);
+  displayCurrentTemp(u8x8, temperatureReadouts.currentTemp);
+  displayBmeAlt(u8x8, bme280SensorReadouts.pressureAltitude);
+  displayBmeHumidity(u8x8, bme280SensorReadouts.humidity);
 }
 
 void displayCurrentReadoutsLayout()
@@ -263,24 +251,17 @@ void displayStatistics()
     displayStatisticsLayout();
     previousScreen = currentScreen;
   }
-
-  u8x8.setCursor(6, 2);
-  u8x8.print(year);  
-  u8x8.print(F("."));
-  u8x8.print(month);
-  u8x8.print(F("."));
-  u8x8.print(day);
   
   u8x8.setCursor(8, 3);
-  if(MaxSpeed <= 99)
+  if(gpsReadouts.maxSpeed <= 99)
     u8x8.print(FS(space));
-  if(MaxSpeed <= 9)
+  if(gpsReadouts.maxSpeed <= 9)
     u8x8.print(FS(space));
-  u8x8.print(MaxSpeed);
+  u8x8.print(gpsReadouts.maxSpeed);
 
-  displayMaxTemp(u8x8, T1Max);
-  displayBmeAlt(u8x8, MaxPressureAltitude);
-  displayBmeHumidity(u8x8, MaxHumidity);
+  displayMaxTemp(u8x8, temperatureReadouts.maxTemp);
+  displayBmeAlt(u8x8, bme280SensorReadouts.maxPressureAltitude);
+  displayBmeHumidity(u8x8, bme280SensorReadouts.maxHumidity);
 }
 
 void displayStatisticsLayout()

@@ -18,7 +18,7 @@ struct GpsReadouts
 {
   NMEAGPS  gps;
   gps_fix  fix;
-  long speed
+  long speed;
   long maxSpeed;
   int year;
   int month;
@@ -28,7 +28,7 @@ struct GpsReadouts
   int numSV;
   int gpsHasFix;
   bool wasGpsFix;
-}
+};
 
 void initGPS()
 {
