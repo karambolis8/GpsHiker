@@ -7,10 +7,6 @@
 // napiecie baterii na ekranie zamiast numeru ekranu
 // temperatura max/min
 
-// ekran "TRIP"
-// ekran "STATS"
-// ekran "READOUTS"
-
 //obudowa z wystawieniem USB C ładowania
 //USB mini dostepne do programowania po odkreceniu srubek arduino
 //18650 montowane na trytki
