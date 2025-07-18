@@ -37,7 +37,7 @@ struct ScreenUpdate {
   int previousScreen;
   int currentScreen;
   bool blink;
-}
+};
 
 struct TemperatureSensor temperatureReadouts;
 struct Bme280Sensor bme280SensorReadouts;
@@ -126,7 +126,7 @@ void updateScreen()
   }
 
   u8x8.setCursor(15,7);
-  if(blink)
+  if(screenUpdate.blink)
     u8x8.print(".");
   else
     u8x8.print(" ");
@@ -227,9 +227,9 @@ void displayCurrentReadouts()
   u8x8.print(F("%"));
 
   u8x8.setCursor(0, 7);
-  u8x8.print(gpsReadouts.fix.latitude(), 5);
+  u8x8.print(gpsReadouts.fix.latitude(), 3);
   u8x8.setCursor(7, 7);
-  u8x8.print(gpsReadouts.fix.longitude(), 5);
+  u8x8.print(gpsReadouts.fix.longitude(), 3);
 }
 
 void displayCurrentReadoutsLayout()
