@@ -11,10 +11,12 @@
 //USB mini dostepne do programowania po odkreceniu srubek arduino
 //18650 montowane na trytki
 //wstawienie jakies TMP sensora na krawedzi obudowy
-//wentylacja jaklas dla BMP z siateczka (mozna zrobic motyw z pause print i podlozeniem siateczki np z herbaty do zadrukowania)
+//wentylacja jaklas dla BMP z siateczka (mozna zrobic motyw z pause print i podlozeniem siateczki np z herbaty do zadrukowania, albo po prostu wkleić na CA)
 //jakies narozniki czy cos takiego z TPU
 //jakas petelka na sznurek/karabinczyk
 //jakis klips do ubrania
+
+//https://docs.arduino.cc/learn/programming/eeprom-guide/
 
 
 #include "Config.h"
@@ -127,23 +129,28 @@ void updateScreen()
 {
   printHeader();
 //6 lines
+
 //1. Current readouts
-// - Humidity
-// - Temperature
 // - Bar alt (przewyższenie)
 // - GPS alt (nad poziomem morza)
+// - Temperature + Humidity
+// - path kilometers
+// - lat lon short
+
 //2. GPS
 // - Lat
 // - Lon
 // - Heading (stopnie + NWES)
 // - GPS alt (nad poziomem morza)
 // - GPS speed
+// - numsat
+
 //3. Stats
 // - max wysokosc bar
 // - max wysokość gps
-// - max temp
-// - min temp
+// - max temp + min temp
 // - czas od resetu
+// - path kilometers
 
   if(currentScreen == 2)
   {
@@ -341,6 +348,13 @@ void readGPS()
   if (gps.available( gpsPort )) 
   {
     fix = gps.read();
+
+    Serial.println(fix.latitude());
+    Serial.println(fix.longitude());
+    Serial.println(fix.alt.whole);
+    Serial.println(fix.heading_cd());
+    Serial.println(fix.satellites);
+    Serial.println(gps.sat_count);
 
     if(numSV > GPS_MIN_SAT && gps.sat_count > GPS_MIN_SAT)
     {
