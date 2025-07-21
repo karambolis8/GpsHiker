@@ -14,6 +14,7 @@ volatile  bool interrupt_process_status = {
 #define GPS_BAUD 9600
 // #define GPS_BAUD 115200
 #define GPS_MIN_SAT 10
+#define GPS_READ_DELAY 125
 
 //I2C
 #define OLED

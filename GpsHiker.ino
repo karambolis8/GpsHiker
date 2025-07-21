@@ -2,8 +2,9 @@
 
 // sprawdzic czy button zle sie zachowuje tez jak go zastapic stykaniem kabelkow (moze zle siedzi w plytce)
 
-// sync GPS readout 100ms (policzyć serial monitorem)
-
+// sync GPS readout 125ms (policzyć serial monitorem)
+// liczenie GPS drogi oraz czasu od resetu da srednia predkosc
+// dodatkowo mozna sprobowac policzyc predkosc bez postojów
 // liczenie drogi
 // - https://github.com/SlashDevin/NeoGPS/blob/master/extras/doc/Location.md
 // - https://github.com/SlashDevin/NeoGPS/issues/15
@@ -36,19 +37,12 @@
 #include "GPS.h"
 #include <Wire.h>
 #include <U8x8lib.h>
-
-struct ScreenUpdate {
-  unsigned long lastScreenUpdate;
-  bool doScreenUpdate;
-  int previousScreen;
-  int currentScreen;
-  bool blink;
-};
+#include "GpsHikerModels.h"
 
 struct TemperatureSensor temperatureReadouts;
 struct Bme280Sensor bme280SensorReadouts;
 struct GpsReadouts gpsReadouts;
-float volts = 0.0;
+struct BatteryMonitor battery = { 4.2, false };
 U8X8_SSD1306_128X64_NONAME_HW_I2C u8x8(U8X8_PIN_NONE);
 struct ScreenUpdate screenUpdate = {0, false, -1, 0, true};
 
@@ -189,14 +183,24 @@ void printHeader()
   else
   {    
     u8x8.print(F("No fix"));
-  }  
-  
+  }
+
+  printBattery();
+}
+
+void printBattery()
+{
+  if(battery.blink)
+  {
+    u8x8.setInverseFont(1);
+  }
+
   u8x8.setCursor(7, 1);
-  u8x8.print(F("Batt:"));
-  u8x8.setCursor(12, 1);
-  u8x8.print(volts, 1);
-  u8x8.setCursor(15, 1);
+  u8x8.print(F("Batt: "));
+  u8x8.print(battery.volts, 1);
   u8x8.print(F("v"));
+
+  u8x8.setInverseFont(0);
 }
 
 void displayCurrentReadouts()
@@ -329,5 +333,14 @@ void clearLines(int startingLine)
 
 void calculateBattery()
 {
-  volts = 4.2;
+  battery.volts = 4.2;
+
+  if(battery.volts <= 2.7 && !battery.blink)
+  {
+    battery.blink = true;
+  }
+  else
+  {
+    battery.blink = false;
+  }
 }

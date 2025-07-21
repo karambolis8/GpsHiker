@@ -28,6 +28,7 @@ struct GpsReadouts
   int numSV;
   int gpsHasFix;
   bool wasGpsFix;
+  unsigned long lastReadout;
 };
 
 void initGPS()
@@ -38,6 +39,14 @@ void initGPS()
 void readGPS(GpsReadouts* gpsReadouts)
 {
   long readStart = millis();
+
+  if(readStart - gpsReadouts->lastReadout < GPS_READ_DELAY)
+  {
+    return; // Avoid reading too often
+  }
+
+  gpsReadouts->lastReadout = readStart;
+
   if (gpsReadouts->gps.available( gpsPort )) 
   {
     gpsReadouts->fix = gpsReadouts->gps.read();
