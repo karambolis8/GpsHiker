@@ -1,19 +1,20 @@
-// dodać obsługe dodatkowego buttona do resetu (początek wędrówki - liczenie czasu, wysokości, zejść i podejść)
+// TODO:
+// 1. reset button support (reseting bar alt, trip time & trip distance)
+// 2. check if screen button works properly when shotring two wires instead of tact switch pressing
+// 3. implement GPS path calculation
+// 4. implement stats & readouts screen
+// 5. refactor OLED refresh
 
-// sprawdzic czy button zle sie zachowuje tez jak go zastapic stykaniem kabelkow (moze zle siedzi w plytce)
-
-
-//obudowa z wystawieniem USB C ładowania
-//USB mini dostepne do programowania po odkreceniu srubek arduino
-//18650 montowane na trytki
-//wstawienie jakies TMP sensora na krawedzi obudowy
-//wentylacja jaklas dla BMP z siateczka (mozna zrobic motyw z pause print i podlozeniem siateczki np z herbaty do zadrukowania, albo po prostu wkleić na CA)
-//jakies narozniki czy cos takiego z TPU
-//jakas petelka na sznurek/karabinczyk
-//jakis klips do ubrania
-
-//analog read do battery
-
+// TODO case:
+// design 3d-printed case with features:
+//   - USB C charging
+//   - programming port available when uscrewing the arduino
+//   - 18650 or small lipo battery holder
+//   - TMP sensor on the edge of the case
+//   - ventilation for BME280
+//   - some kind of clip for attaching to backpack
+//   - carabiner or string loop
+//   - TPU corners for protection
 
 #include "Config.h"
 
