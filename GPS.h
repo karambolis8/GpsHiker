@@ -26,8 +26,12 @@ struct GpsReadouts
   int hour;
   int minutes;
   int numSV;
+  int heading;
   int gpsHasFix;
   bool wasGpsFix;
+  long latitude;
+  long longitude;
+  int altitude;
   unsigned long lastReadout;
 };
 

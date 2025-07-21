@@ -8,8 +8,7 @@
 // liczenie drogi
 // - https://github.com/SlashDevin/NeoGPS/blob/master/extras/doc/Location.md
 // - https://github.com/SlashDevin/NeoGPS/issues/15
-
-// napięcie bateryjki z mryganiem przy 2.7V
+// poprawić odczyty gps do zmiennych zamiast odczytywania z fixa
 
 //obudowa z wystawieniem USB C ładowania
 //USB mini dostepne do programowania po odkreceniu srubek arduino
@@ -35,6 +34,7 @@
 #include "BME280Oled.h"
 #include "Button.h"
 #include "GPS.h"
+#include "GPSOled.h"
 #include <Wire.h>
 #include <U8x8lib.h>
 #include "GpsHikerModels.h"
@@ -48,6 +48,8 @@ struct ScreenUpdate screenUpdate = {0, false, -1, 0, true};
 
 void setup()
 {
+  Serial.begin(115200);
+
   initOled();
   initButton();
   printHeader();
@@ -118,7 +120,7 @@ void updateScreen()
   }
   else if(screenUpdate.currentScreen == 1)
   {
-    displayCurrentGpsData();
+    displayGpsScreen();
   }
   else
   {
@@ -218,6 +220,7 @@ void displayCurrentReadouts()
     displayCurrentReadoutsLayout();
     screenUpdate.previousScreen = screenUpdate.currentScreen;
   }
+
   u8x8.setCursor(0, 3);
   u8x8.print(F("BME Alt:"));
   u8x8.setCursor(12,3);
@@ -250,34 +253,16 @@ void displayCurrentReadoutsLayout()
   // displayCurrentBmeHumidityLayout(u8x8);
 }
 
-void displayCurrentGpsData()
-{  
-//2. GPS
-// - Lat
-// - Lon
-// - Heading (stopnie + NWES)
-// - GPS alt (nad poziomem morza)
-// - GPS speed
-// - numsatif(currentScreen != previousScreen)
+void displayGpsScreen()
+{
+  if(screenUpdate.currentScreen != screenUpdate.previousScreen)
   {
     clearLines(2);
-    displayCurrentGpsDataLayout();
+    displayCurrentGpsDataLayout(u8x8);
     screenUpdate.previousScreen = screenUpdate.currentScreen;
   }
-}
 
-void displayCurrentGpsDataLayout()
-{
-  u8x8.setCursor(0, 2);
-  u8x8.print(F("Date:"));
-
-  u8x8.setCursor(0, 6);
-  u8x8.print(F("Time:"));
-
-  u8x8.setCursor(0, 3);
-  u8x8.print(F("GPS Spd:"));
-  u8x8.setCursor(11, 3);
-  u8x8.print(F("km/h"));
+  displayCurrentGpsData(u8x8, &gpsReadouts)
 }
 
 void displayStatistics()

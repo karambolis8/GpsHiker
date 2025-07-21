@@ -10,9 +10,9 @@ volatile  bool interrupt_process_status = {
 
 #define ANALOG_READ_DELAY 500
 
-//RX-TX
-#define GPS_BAUD 9600
-// #define GPS_BAUD 115200
+//GPS
+// #define GPS_BAUD 9600
+#define GPS_BAUD 115200
 #define GPS_MIN_SAT 10
 #define GPS_READ_DELAY 125
 
