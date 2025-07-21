@@ -15,6 +15,8 @@ volatile  bool interrupt_process_status = {
 #define GPS_BAUD 115200
 #define GPS_MIN_SAT 10
 #define GPS_READ_DELAY 125
+#define TIMEZONE_OFFSET 1
+#define SUMMER_TIME true
 
 //I2C
 #define OLED
@@ -27,6 +29,3 @@ volatile  bool interrupt_process_status = {
 #define DS18B20_Address {0x28, 0xD, 0x6A, 0x2, 0x26, 0x20, 0x1, 0x25}
 
 #define BME280_Address 0x76
-
-#define TIMEZONE_OFFSET 1
-#define SUMMER_TIME true

@@ -8,15 +8,28 @@ void displayCurrentGpsDataLayout(U8X8_SSD1306_128X64_NONAME_HW_I2C& u8x8)
 
 void displayCurrentGpsData(U8X8_SSD1306_128X64_NONAME_HW_I2C& u8x8, GpsReadouts* gpsReadouts)
 {
+
+// Latitude:
+// Ranges from -90 to +90, with positive values indicating North and negative values indicating South of the equator.
+// Longitude:
+// Ranges from -180 to +180, with positive values indicating East and negative values indicating West of the Prime Meridian.
   u8x8.setCursor(0, 2);
-  u8x8.print(F("Lat: "));
-  u8x8.setCursor(5, 2);
-  u8x8.print(gpsReadouts->latitude, 10);
+  u8x8.print(F("Lat:"));
+  if(gpsReadouts->latitude > 0)
+  {
+    u8x8.print(F(" "));
+  }
+  u8x8.print(gpsReadouts->latitude, 7);
+  u8x8.print(gpsReadouts->latChar);
   
   u8x8.setCursor(0, 3);
-  u8x8.print(F("Lon: "));
-  u8x8.setCursor(5, 3);
-  u8x8.print(gpsReadouts->longitude, 10);
+  u8x8.print(F("Lon:"));
+  if(gpsReadouts->longitude > 0)
+  {
+    u8x8.print(F(" "));
+  }
+  u8x8.print(gpsReadouts->longitude, 7);
+  u8x8.print(gpsReadouts->lonChar);
   
   u8x8.setCursor(0, 4);
   u8x8.print(F("Sat:"));
@@ -29,7 +42,7 @@ void displayCurrentGpsData(U8X8_SSD1306_128X64_NONAME_HW_I2C& u8x8, GpsReadouts*
   u8x8.setCursor(7, 4);
   u8x8.print(F("Head:"));
   u8x8.setCursor(12, 4);
-  u8x8.print(gpsReadouts->heading);
+  u8x8.print(gpsReadouts->heading, 0);
   u8x8.setCursor(15, 4);
   u8x8.print(F("°"));
   

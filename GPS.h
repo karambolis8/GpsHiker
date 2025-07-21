@@ -18,6 +18,8 @@ struct GpsReadouts
 {
   NMEAGPS  gps;
   gps_fix  fix;
+  bool gpsHasFix;
+  bool wasGpsFix;
   long speed;
   long maxSpeed;
   int year;
@@ -26,11 +28,11 @@ struct GpsReadouts
   int hour;
   int minutes;
   int numSV;
-  int heading;
-  int gpsHasFix;
-  bool wasGpsFix;
+  float heading;
   long latitude;
   long longitude;
+  char latChar;
+  char lonChar;
   int altitude;
   unsigned long lastReadout;
 };
@@ -51,16 +53,9 @@ void readGPS(GpsReadouts* gpsReadouts)
 
   gpsReadouts->lastReadout = readStart;
 
-  if (gpsReadouts->gps.available( gpsPort )) 
+  if (gpsReadouts->gps.available(gpsPort)) 
   {
     gpsReadouts->fix = gpsReadouts->gps.read();
-
-    Serial.println(gpsReadouts->fix.latitude());
-    Serial.println(gpsReadouts->fix.longitude());
-    Serial.println(gpsReadouts->fix.alt.whole);
-    Serial.println(gpsReadouts->fix.heading_cd());
-    Serial.println(gpsReadouts->fix.satellites);
-    Serial.println(gpsReadouts->gps.sat_count);
 
     if(gpsReadouts->numSV > GPS_MIN_SAT && gpsReadouts->gps.sat_count > GPS_MIN_SAT)
     {
@@ -82,7 +77,7 @@ void readGPS(GpsReadouts* gpsReadouts)
       gpsReadouts->gpsHasFix = false;
     }
 
-    gpsReadouts->numSV = gpsReadouts->gps.sat_count;
+    gpsReadouts->numSV = gpsReadouts->fix.satellites;
 
     if(gpsReadouts->fix.valid.speed)
     {
@@ -92,12 +87,14 @@ void readGPS(GpsReadouts* gpsReadouts)
         gpsReadouts->maxSpeed = gpsReadouts->speed;
       }
     }
+
     if(gpsReadouts->fix.valid.date)
     {
       gpsReadouts->year = (int)gpsReadouts->fix.dateTime.year + 2000;
       gpsReadouts->month = (int)gpsReadouts->fix.dateTime.month;
       gpsReadouts->day = (int)gpsReadouts->fix.dateTime.date;
     }
+
     if(gpsReadouts->fix.valid.time)
     {
       gpsReadouts->hour = (int)gpsReadouts->fix.dateTime.hours + TIMEZONE_OFFSET;
@@ -108,9 +105,30 @@ void readGPS(GpsReadouts* gpsReadouts)
         gpsReadouts->hour += 1;
       }
     }
-  }
 
-  Serial.print("GPS read time: ");
-  Serial.print(millis() - readStart);
-  Serial.println("ms");
+    if(gpsReadouts->fix.valid.location)
+    {
+      gpsReadouts->latitude = gpsReadouts->fix.latitude();
+      gpsReadouts->longitude = gpsReadouts->fix.longitude();
+      gpsReadouts->latChar = gpsReadouts->fix.longitudeDMS.EW();
+      gpsReadouts->lonChar = gpsReadouts->fix.latitudeDMS.NS();
+
+      //distance calculation basing on precise longitudeL and latitudeL
+      //https://github.com/SlashDevin/NeoGPS/blob/master/extras/doc/Data%20Model.md#usage
+      //https://github.com/SlashDevin/NeoGPS/blob/master/extras/doc/Location.md
+      //https://github.com/SlashDevin/NeoGPS/issues/15
+      //calculating time since reset
+      //calculating average speed basing on distance and time
+      //calculating walking speed without stops
+    }
+
+    if(gpsReadouts->fix.valid.heading)
+    {
+      gpsReadouts->heading = gpsReadouts->fix.heading();
+    }
+
+    if(gpsReadouts->fix.valid.altitude)
+    {
+      gpsReadouts->altitude = gpsReadouts->fix.alt.whole;
+    }
 }

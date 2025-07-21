@@ -2,13 +2,6 @@
 
 // sprawdzic czy button zle sie zachowuje tez jak go zastapic stykaniem kabelkow (moze zle siedzi w plytce)
 
-// sync GPS readout 125ms (policzyć serial monitorem)
-// liczenie GPS drogi oraz czasu od resetu da srednia predkosc
-// dodatkowo mozna sprobowac policzyc predkosc bez postojów
-// liczenie drogi
-// - https://github.com/SlashDevin/NeoGPS/blob/master/extras/doc/Location.md
-// - https://github.com/SlashDevin/NeoGPS/issues/15
-// poprawić odczyty gps do zmiennych zamiast odczytywania z fixa
 
 //obudowa z wystawieniem USB C ładowania
 //USB mini dostepne do programowania po odkreceniu srubek arduino
@@ -19,10 +12,7 @@
 //jakas petelka na sznurek/karabinczyk
 //jakis klips do ubrania
 
-// Latitude:
-// Ranges from -90 to +90, with positive values indicating North and negative values indicating South of the equator.
-// Longitude:
-// Ranges from -180 to +180, with positive values indicating East and negative values indicating West of the Prime Meridian.
+//analog read do battery
 
 
 #include "Config.h"
