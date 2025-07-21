@@ -107,7 +107,7 @@ void performReadouts()
   readGPS(&gpsReadouts);
   calculateTemp(&temperatureReadouts);
   calculatePressureHumidity(&bme280SensorReadouts);
-  calculateBattery();
+  calculateBattery(&battery);
 }
 
 void updateScreen()
@@ -187,22 +187,7 @@ void printHeader()
     u8x8.print(F("No fix"));
   }
 
-  printBattery();
-}
-
-void printBattery()
-{
-  if(battery.blink)
-  {
-    u8x8.setInverseFont(1);
-  }
-
-  u8x8.setCursor(7, 1);
-  u8x8.print(F("Batt: "));
-  u8x8.print(battery.volts, 1);
-  u8x8.print(F("v"));
-
-  u8x8.setInverseFont(0);
+  printBattery(u8x8, &battery);
 }
 
 void displayCurrentReadouts()
@@ -314,18 +299,4 @@ void clearLines(int startingLine)
       u8x8.setCursor(0, startingLine);
       u8x8.print(FS(clearLine));
     }
-}
-
-void calculateBattery()
-{
-  battery.volts = 4.2;
-
-  if(battery.volts <= 2.7 && !battery.blink)
-  {
-    battery.blink = true;
-  }
-  else
-  {
-    battery.blink = false;
-  }
 }
