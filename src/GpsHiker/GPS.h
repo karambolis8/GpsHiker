@@ -1,6 +1,7 @@
 #include "NMEAGPS.h"
 #include "GPSport.h"
 #include "NeoTime.h"
+// #include "DMS.h"
 
 #ifndef NMEAGPS_PARSE_GSV
 #error You must define NMEAGPS_PARSE_GSV in NMEAGPS_cfg.h!
@@ -110,8 +111,8 @@ void readGPS(GpsReadouts* gpsReadouts)
     {
       gpsReadouts->latitude = gpsReadouts->fix.latitude();
       gpsReadouts->longitude = gpsReadouts->fix.longitude();
-      gpsReadouts->latChar = gpsReadouts->fix.longitudeDMS.EW();
-      gpsReadouts->lonChar = gpsReadouts->fix.latitudeDMS.NS();
+      // gpsReadouts->latChar = gpsReadouts->fix.longitudeDMS.EW(); // not working. maybe library to update
+      // gpsReadouts->lonChar = gpsReadouts->fix.latitudeDMS.NS();
 
       //distance calculation basing on precise longitudeL and latitudeL
       //https://github.com/SlashDevin/NeoGPS/blob/master/extras/doc/Data%20Model.md#usage
@@ -131,4 +132,5 @@ void readGPS(GpsReadouts* gpsReadouts)
     {
       gpsReadouts->altitude = gpsReadouts->fix.alt.whole;
     }
+  }
 }

@@ -29,6 +29,7 @@
 #include <Wire.h>
 #include <U8x8lib.h>
 #include "GpsHikerModels.h"
+#include "Battery.h"
 
 struct TemperatureSensor temperatureReadouts;
 struct Bme280Sensor bme280SensorReadouts;
@@ -238,7 +239,7 @@ void displayGpsScreen()
     screenUpdate.previousScreen = screenUpdate.currentScreen;
   }
 
-  displayCurrentGpsData(u8x8, &gpsReadouts)
+  displayCurrentGpsData(u8x8, &gpsReadouts);
 }
 
 void displayStatistics()

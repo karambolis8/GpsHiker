@@ -1,14 +1,12 @@
 #include <U8x8lib.h>
-#include "GpsHikerModels.h"
 
 void displayCurrentGpsDataLayout(U8X8_SSD1306_128X64_NONAME_HW_I2C& u8x8)
 {
-
+  return;
 }
 
 void displayCurrentGpsData(U8X8_SSD1306_128X64_NONAME_HW_I2C& u8x8, GpsReadouts* gpsReadouts)
 {
-
 // Latitude:
 // Ranges from -90 to +90, with positive values indicating North and negative values indicating South of the equator.
 // Longitude:
