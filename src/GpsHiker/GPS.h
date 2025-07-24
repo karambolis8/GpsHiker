@@ -78,7 +78,7 @@ void readGPS(GpsReadouts* gpsReadouts)
       gpsReadouts->gpsHasFix = false;
     }
 
-    gpsReadouts->numSV = gpsReadouts->fix.satellites;
+    gpsReadouts->numSV = gpsReadouts->gps.sat_count;
 
     if(gpsReadouts->fix.valid.speed)
     {

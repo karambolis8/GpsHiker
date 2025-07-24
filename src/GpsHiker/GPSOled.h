@@ -38,11 +38,9 @@ void displayCurrentGpsData(U8X8_SSD1306_128X64_NONAME_HW_I2C& u8x8, GpsReadouts*
   }
   u8x8.print(gpsReadouts->numSV);
   u8x8.setCursor(7, 4);
-  u8x8.print(F("Head:"));
+  u8x8.print(F("Head: "));
   u8x8.setCursor(12, 4);
   u8x8.print(gpsReadouts->heading, 0);
-  u8x8.setCursor(15, 4);
-  u8x8.print(F("°"));
   
   u8x8.setCursor(0, 5);
   u8x8.print(F("GPS Alt: "));

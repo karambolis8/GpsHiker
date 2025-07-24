@@ -4,6 +4,7 @@
 // 3. implement GPS path calculation
 // 4. implement stats & readouts screen
 // 5. refactor OLED refresh
+// 6. reset trip screen that waits for GPS fix before seting initial values
 
 // TODO case:
 // design 3d-printed case with features:
@@ -15,6 +16,7 @@
 //   - some kind of clip for attaching to backpack
 //   - carabiner or string loop
 //   - TPU corners for protection
+
 
 #include "Config.h"
 
@@ -256,11 +258,14 @@ void displayGpsScreen()
 void displayStatistics()
 {
 //3. Stats
-// - max wysokosc bar
-// - max wysokość gps
+// - wysokosc poczatkowa GPS
+// - GPS max speed
 // - max temp + min temp
-// - czas od resetu
-// - path kilometers
+// - max + min hum
+// - trip time
+// - trip km
+// GPS XXXXm-XXXXm
+// ODO XX:XXkm XX:Xh
   if(screenUpdate.currentScreen != screenUpdate.previousScreen)
   {
     clearLines(1);
