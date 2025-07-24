@@ -75,6 +75,8 @@ void loop()
   {
     screenUpdate.currentScreen = ((screenUpdate.currentScreen + 1) % 3);
   }
+  
+  performReadouts(); 
 
   unsigned long now = millis();
   
@@ -84,8 +86,6 @@ void loop()
     screenUpdate.doScreenUpdate = true;
     screenUpdate.lastScreenUpdate = now;
   }
-  
-  performReadouts(); 
 
   if(screenUpdate.doScreenUpdate)
   {
@@ -198,23 +198,34 @@ void displayCurrentReadouts()
     screenUpdate.previousScreen = screenUpdate.currentScreen;
   }
 
-  u8x8.setCursor(0, 3);
+  u8x8.setCursor(0, 2);
   u8x8.print(F("BME Alt:"));
-  u8x8.setCursor(12,3);
+  u8x8.setCursor(9, 2);
+  u8x8.print(bme280SensorReadouts.pressureAltitude);
   u8x8.print(F("m"));
 
-  u8x8.setCursor(0, 4);
+  u8x8.setCursor(0, 3);
   u8x8.print(F("GPS Alt:"));
-  u8x8.setCursor(9, 4);
+  u8x8.setCursor(9, 3);
   u8x8.print(gpsReadouts.fix.alt.whole);
   u8x8.print(F("m"));
 
-  u8x8.setCursor(0, 5);
+  u8x8.setCursor(0, 4);
+  u8x8.print(F("Tmp:"));
   u8x8.print(temperatureReadouts.currentTemp);
   u8x8.print(F("C"));
-  u8x8.setCursor(12, 5);
+  u8x8.setCursor(9, 4);
+  u8x8.print(F("Hum:"));
   u8x8.print(bme280SensorReadouts.humidity);
   u8x8.print(F("%"));
+
+  u8x8.setCursor(0, 5);
+  u8x8.print(F("Trip: "));
+  u8x8.print(F("17.3km"));
+
+  u8x8.setCursor(0, 6);
+  u8x8.print(F("Trip: "));
+  u8x8.print(F("10:35h"));
 
   u8x8.setCursor(0, 7);
   u8x8.print(gpsReadouts.fix.latitude(), 3);

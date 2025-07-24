@@ -10,5 +10,6 @@ struct ScreenUpdate
 struct BatteryMonitor 
 {
   float volts;
+  bool alarm;
   bool blink;
 };

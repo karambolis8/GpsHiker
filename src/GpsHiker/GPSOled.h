@@ -47,18 +47,6 @@ void displayCurrentGpsData(U8X8_SSD1306_128X64_NONAME_HW_I2C& u8x8, GpsReadouts*
   u8x8.setCursor(0, 5);
   u8x8.print(F("GPS Alt: "));
   u8x8.setCursor(9, 5);
-  if(gpsReadouts->altitude <= 999)
-  {
-    u8x8.print(FS(space));
-  }
-  if(gpsReadouts->altitude <= 99)
-  {
-    u8x8.print(FS(space));
-  }
-  if(gpsReadouts->altitude <= 9)
-  {
-    u8x8.print(FS(space));
-  }
   u8x8.print(gpsReadouts->altitude);
   u8x8.print(F("m"));
 }
