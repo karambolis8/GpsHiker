@@ -15,10 +15,11 @@
 #error You must define NMEAGPS_PARSE_SATELLITE_INFO in NMEAGPS_cfg.h!
 #endif
 
+NMEAGPS  gps;
+gps_fix  fix;
+
 struct GpsReadouts 
 {
-  NMEAGPS  gps;
-  gps_fix  fix;
   bool gpsHasFix;
   bool wasGpsFix;
   long speed;
@@ -52,85 +53,85 @@ void readGPS(GpsReadouts* gpsReadouts)
     return; // Avoid reading too often
   }
 
-  gpsReadouts->lastReadout = readStart;
-
-  if (gpsReadouts->gps.available(gpsPort)) 
+  if (gps.available(gpsPort)) 
   {
-    gpsReadouts->fix = gpsReadouts->gps.read();
+    fix = gps.read();
 
-    if(gpsReadouts->numSV > GPS_MIN_SAT && gpsReadouts->gps.sat_count > GPS_MIN_SAT)
-    {
-      gpsReadouts->gpsHasFix = true;
-      gpsReadouts->wasGpsFix = true;
-    }
-    else if(gpsReadouts->numSV < GPS_MIN_SAT && gpsReadouts->gps.sat_count > GPS_MIN_SAT)
-    {
-      gpsReadouts->gpsHasFix = true;
-      gpsReadouts->wasGpsFix = true;
-    }
-    else if(gpsReadouts->numSV > GPS_MIN_SAT && gpsReadouts->gps.sat_count < GPS_MIN_SAT)
-    {
-      gpsReadouts->gpsHasFix = false;
-      gpsReadouts->wasGpsFix = true;
-    }
-    else
-    {
-      gpsReadouts->gpsHasFix = false;
-    }
+    gpsReadouts->numSV = gps.sat_count;
 
-    gpsReadouts->numSV = gpsReadouts->gps.sat_count;
+    // if(gpsReadouts->numSV > GPS_MIN_SAT && gps.sat_count > GPS_MIN_SAT)
+    // {
+    //   gpsReadouts->gpsHasFix = true;
+    //   gpsReadouts->wasGpsFix = true;
+    // }
+    // else if(gpsReadouts->numSV < GPS_MIN_SAT && gps.sat_count > GPS_MIN_SAT)
+    // {
+    //   gpsReadouts->gpsHasFix = true;
+    //   gpsReadouts->wasGpsFix = true;
+    // }
+    // else if(gpsReadouts->numSV > GPS_MIN_SAT && gps.sat_count < GPS_MIN_SAT)
+    // {
+    //   gpsReadouts->gpsHasFix = false;
+    //   gpsReadouts->wasGpsFix = true;
+    // }
+    // else
+    // {
+    //   gpsReadouts->gpsHasFix = false;
+    // }
 
-    if(gpsReadouts->fix.valid.speed)
-    {
-      gpsReadouts->speed = gpsReadouts->fix.speed_kph();
-      if(gpsReadouts->speed > gpsReadouts->maxSpeed)
-      {
-        gpsReadouts->maxSpeed = gpsReadouts->speed;
-      }
-    }
+    // if(fix.valid.speed)
+    // {
+    //   gpsReadouts->speed = fix.speed_kph();
+    //   if(gpsReadouts->speed > gpsReadouts->maxSpeed)
+    //   {
+    //     gpsReadouts->maxSpeed = gpsReadouts->speed;
+    //   }
+    // }
 
-    if(gpsReadouts->fix.valid.date)
-    {
-      gpsReadouts->year = (int)gpsReadouts->fix.dateTime.year + 2000;
-      gpsReadouts->month = (int)gpsReadouts->fix.dateTime.month;
-      gpsReadouts->day = (int)gpsReadouts->fix.dateTime.date;
-    }
+    // if(fix.valid.date)
+    // {
+    //   gpsReadouts->year = (int)fix.dateTime.year + 2000;
+    //   gpsReadouts->month = (int)fix.dateTime.month;
+    //   gpsReadouts->day = (int)fix.dateTime.date;
+    // }
 
-    if(gpsReadouts->fix.valid.time)
-    {
-      gpsReadouts->hour = (int)gpsReadouts->fix.dateTime.hours + TIMEZONE_OFFSET;
-      gpsReadouts->minutes = (int)gpsReadouts->fix.dateTime.minutes;
+    // if(fix.valid.time)
+    // {
+    //   gpsReadouts->hour = (int)fix.dateTime.hours + TIMEZONE_OFFSET;
+    //   gpsReadouts->minutes = (int)fix.dateTime.minutes;
 
-      if(SUMMER_TIME)
-      {
-        gpsReadouts->hour += 1;
-      }
-    }
+    //   if(SUMMER_TIME)
+    //   {
+    //     gpsReadouts->hour += 1;
+    //   }
+    // }
 
-    if(gpsReadouts->fix.valid.location)
-    {
-      gpsReadouts->latitude = gpsReadouts->fix.latitude();
-      gpsReadouts->longitude = gpsReadouts->fix.longitude();
-      // gpsReadouts->latChar = gpsReadouts->fix.longitudeDMS.EW(); // not working. maybe library to update
-      // gpsReadouts->lonChar = gpsReadouts->fix.latitudeDMS.NS();
+    // if(fix.valid.location)
+    // {
+    //   gpsReadouts->latitude = fix.latitude();
+    //   gpsReadouts->longitude = fix.longitude();
+    //   // gpsReadouts->latChar = gpsReadouts->fix.longitudeDMS.EW(); // not working. maybe library to update
+    //   // gpsReadouts->lonChar = gpsReadouts->fix.latitudeDMS.NS();
 
-      //distance calculation basing on precise longitudeL and latitudeL
-      //https://github.com/SlashDevin/NeoGPS/blob/master/extras/doc/Data%20Model.md#usage
-      //https://github.com/SlashDevin/NeoGPS/blob/master/extras/doc/Location.md
-      //https://github.com/SlashDevin/NeoGPS/issues/15
-      //calculating time since reset
-      //calculating average speed basing on distance and time
-      //calculating walking speed without stops
-    }
+    //   //distance calculation basing on precise longitudeL and latitudeL
+    //   //https://github.com/SlashDevin/NeoGPS/blob/master/extras/doc/Data%20Model.md#usage
+    //   //https://github.com/SlashDevin/NeoGPS/blob/master/extras/doc/Location.md
+    //   //https://github.com/SlashDevin/NeoGPS/issues/15
+    //   //calculating time since reset
+    //   //calculating average speed basing on distance and time
+    //   //calculating walking speed without stops
+    // }
 
-    if(gpsReadouts->fix.valid.heading)
-    {
-      gpsReadouts->heading = gpsReadouts->fix.heading();
-    }
+    // if(fix.valid.heading)
+    // {
+    //   gpsReadouts->heading = fix.heading();
+    // }
 
-    if(gpsReadouts->fix.valid.altitude)
-    {
-      gpsReadouts->altitude = gpsReadouts->fix.alt.whole;
-    }
+    // if(fix.valid.altitude)
+    // {
+    //   gpsReadouts->altitude = fix.alt.whole;
+    // }
   }
+
+  gpsReadouts->lastReadout = millis();
 }

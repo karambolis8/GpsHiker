@@ -13,7 +13,7 @@ volatile  bool interrupt_process_status = {
 //GPS
 // #define GPS_BAUD 9600
 #define GPS_BAUD 115200
-#define GPS_MIN_SAT 10
+#define GPS_MIN_SAT 3
 #define GPS_READ_DELAY 125
 #define TIMEZONE_OFFSET 1
 #define SUMMER_TIME true

@@ -207,7 +207,7 @@ void displayCurrentReadouts()
   u8x8.setCursor(0, 3);
   u8x8.print(F("GPS Alt:"));
   u8x8.setCursor(9, 3);
-  u8x8.print(gpsReadouts.fix.alt.whole);
+  u8x8.print(gpsReadouts.altitude);
   u8x8.print(F("m"));
 
   u8x8.setCursor(0, 4);
@@ -228,9 +228,9 @@ void displayCurrentReadouts()
   u8x8.print(F("10:35h"));
 
   u8x8.setCursor(0, 7);
-  u8x8.print(gpsReadouts.fix.latitude(), 3);
+  u8x8.print(gpsReadouts.latitude, 3);
   u8x8.setCursor(7, 7);
-  u8x8.print(gpsReadouts.fix.longitude(), 3);
+  u8x8.print(gpsReadouts.longitude, 3);
 }
 
 void displayCurrentReadoutsLayout()
