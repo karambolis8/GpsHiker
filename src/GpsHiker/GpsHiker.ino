@@ -42,8 +42,6 @@ struct ScreenUpdate screenUpdate = {0, false, -1, 0, true};
 
 void setup()
 {
-  Serial.begin(115200);
-
   initOled();
   initButton();
   printHeader();
