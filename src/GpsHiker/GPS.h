@@ -1,7 +1,6 @@
 #include "NMEAGPS.h"
 #include "GPSport.h"
 #include "NeoTime.h"
-// #include "DMS.h"
 
 #ifndef NMEAGPS_PARSE_GSV
 #error You must define NMEAGPS_PARSE_GSV in NMEAGPS_cfg.h!
