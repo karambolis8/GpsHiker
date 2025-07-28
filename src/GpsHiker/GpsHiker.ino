@@ -17,27 +17,23 @@
 //   - carabiner or string loop
 //   - TPU corners for protection
 
+// In the NeoGPS library, you can determine if your GPS has a 2D or 3D fix using the fix.status property. This property tells you the type of fix the GPS currently has.
 
-struct GpsReadouts 
-{
-  bool gpsHasFix;
-  bool wasGpsFix;
-  long speed;
-  long maxSpeed;
-  int year;
-  int month;
-  int day;
-  int hour;
-  int minutes;
-  int numSV;
-  float heading;
-  long latitude;
-  long longitude;
-  char latChar;
-  char lonChar;
-  int altitude;
-  unsigned long lastReadout;
-};
+// How to Use fix.status
+// fix.status == gps_fix::STATUS_NONE
+// No fix.
+
+// fix.status == gps_fix::STATUS_TIME_ONLY
+// Only time is valid, no location.
+
+// fix.status == gps_fix::STATUS_GPS
+// 2D fix (latitude and longitude are valid).
+
+// fix.status == gps_fix::STATUS_DGPS
+// 3D fix (latitude, longitude, and altitude are valid).
+
+// fix.satellites: satellites used for the current fix
+// gps.sat_count: satellites currently tracked/seen by the parser
 
 #include "Config.h"
 
@@ -47,7 +43,6 @@ struct GpsReadouts
 #include "TempOled.h"
 #include "BME280Oled.h"
 #include "Button.h"
-#include "GPSOled.h"
 #include <Wire.h>
 #include <U8x8lib.h>
 #include "GpsHikerModels.h"
@@ -57,20 +52,23 @@ struct GpsReadouts
 #include "GPSport.h"
 #include "NeoTime.h"
 
+NMEAGPS  gps;
+gps_fix  fix;
+
 #ifndef NMEAGPS_PARSE_GSV
-  #error You must define NMEAGPS_PARSE_GSV in NMEAGPS_cfg.h!
+#error You must define NMEAGPS_PARSE_GSV in NMEAGPS_cfg.h!
 #endif
 
 #ifndef NMEAGPS_PARSE_SATELLITES
-  #error You must define NMEAGPS_PARSE_SATELLITE in NMEAGPS_cfg.h!
+#error You must define NMEAGPS_PARSE_SATELLITE in NMEAGPS_cfg.h!
 #endif
 
 #ifndef NMEAGPS_PARSE_SATELLITE_INFO
-  #error You must define NMEAGPS_PARSE_SATELLITE_INFO in NMEAGPS_cfg.h!
+#error You must define NMEAGPS_PARSE_SATELLITE_INFO in NMEAGPS_cfg.h!
 #endif
 
-NMEAGPS  gps;
-gps_fix  fix;
+#include "GPS.h"
+#include "GPSOled.h"
 
 struct TemperatureSensor temperatureReadouts;
 struct Bme280Sensor bme280SensorReadouts;
@@ -78,95 +76,6 @@ struct GpsReadouts gpsReadouts;
 struct BatteryMonitor battery = { 4.2, false };
 U8X8_SSD1306_128X64_NONAME_HW_I2C u8x8(U8X8_PIN_NONE);
 struct ScreenUpdate screenUpdate = {0, false, -1, 0, true};
-
-void initGPS()
-{
-  gpsPort.begin(GPS_BAUD);
-}
-
-void readGPS(GpsReadouts* gpsReadouts)
-{
-  if(gps.available(gpsPort)) 
-  {
-    fix = gps.read();
-    
-    gpsReadouts->numSV = gps.sat_count;
-
-    if(gpsReadouts->numSV > GPS_MIN_SAT && gps.sat_count > GPS_MIN_SAT)
-    {
-      gpsReadouts->gpsHasFix = true;
-      gpsReadouts->wasGpsFix = true;
-    }
-    else if(gpsReadouts->numSV < GPS_MIN_SAT && gps.sat_count > GPS_MIN_SAT)
-    {
-      gpsReadouts->gpsHasFix = true;
-      gpsReadouts->wasGpsFix = true;
-    }
-    else if(gpsReadouts->numSV > GPS_MIN_SAT && gps.sat_count < GPS_MIN_SAT)
-    {
-      gpsReadouts->gpsHasFix = false;
-      gpsReadouts->wasGpsFix = true;
-    }
-    else
-    {
-      gpsReadouts->gpsHasFix = false;
-    }
-
-    if(fix.valid.speed)
-    {
-      gpsReadouts->speed = fix.speed_kph();
-      if(gpsReadouts->speed > gpsReadouts->maxSpeed)
-      {
-        gpsReadouts->maxSpeed = gpsReadouts->speed;
-      }
-    }
-
-    if(fix.valid.date)
-    {
-      gpsReadouts->year = (int)fix.dateTime.year + 2000;
-      gpsReadouts->month = (int)fix.dateTime.month;
-      gpsReadouts->day = (int)fix.dateTime.date;
-    }
-
-    if(fix.valid.time)
-    {
-      gpsReadouts->hour = (int)fix.dateTime.hours + TIMEZONE_OFFSET;
-      gpsReadouts->minutes = (int)fix.dateTime.minutes;
-
-      if(SUMMER_TIME)
-      {
-        gpsReadouts->hour += 1;
-      }
-    }
-
-    if(fix.valid.location)
-    {
-      gpsReadouts->latitude = fix.latitude();
-      gpsReadouts->longitude = fix.longitude();
-      // gpsReadouts->latChar = gpsReadouts->fix.longitudeDMS.EW(); // not working. maybe library to update
-      // gpsReadouts->lonChar = gpsReadouts->fix.latitudeDMS.NS();
-
-      //distance calculation basing on precise longitudeL and latitudeL
-      //https://github.com/SlashDevin/NeoGPS/blob/master/extras/doc/Data%20Model.md#usage
-      //https://github.com/SlashDevin/NeoGPS/blob/master/extras/doc/Location.md
-      //https://github.com/SlashDevin/NeoGPS/issues/15
-      //calculating time since reset
-      //calculating average speed basing on distance and time
-      //calculating walking speed without stops
-    }
-
-    if(fix.valid.heading)
-    {
-      gpsReadouts->heading = fix.heading();
-    }
-
-    if(fix.valid.altitude)
-    {
-      gpsReadouts->altitude = fix.alt.whole;
-    }
-  }
-}
-
 
 void setup()
 {
@@ -301,7 +210,12 @@ void printHeader()
 
   if(gpsReadouts.gpsHasFix)
   {
-    u8x8.print(F("Fix   "));
+    u8x8.print(F("Fix "));
+    if(gpsReadouts.numSV < 10)
+    {
+      u8x8.print(FS(space));
+    }
+    u8x8.print(gpsReadouts.numSV);
   }
   else
   {    
