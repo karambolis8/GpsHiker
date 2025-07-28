@@ -28,6 +28,8 @@ void readGPS(GpsReadouts* gpsReadouts)
   {
     fix = gps.read();
     
+// fix.satellites: satellites used for the current fix
+// gps.sat_count: satellites currently tracked/seen by the parser
     gpsReadouts->numSV = gps.sat_count;
 
     if(fix.valid.speed)

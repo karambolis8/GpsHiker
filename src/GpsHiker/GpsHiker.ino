@@ -17,9 +17,6 @@
 //   - carabiner or string loop
 //   - TPU corners for protection
 
-// fix.satellites: satellites used for the current fix
-// gps.sat_count: satellites currently tracked/seen by the parser
-
 #include "Config.h"
 
 #include "Utils.h"
