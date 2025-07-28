@@ -17,21 +17,6 @@
 //   - carabiner or string loop
 //   - TPU corners for protection
 
-// In the NeoGPS library, you can determine if your GPS has a 2D or 3D fix using the fix.status property. This property tells you the type of fix the GPS currently has.
-
-// How to Use fix.status
-// fix.status == gps_fix::STATUS_NONE
-// No fix.
-
-// fix.status == gps_fix::STATUS_TIME_ONLY
-// Only time is valid, no location.
-
-// fix.status == gps_fix::STATUS_GPS
-// 2D fix (latitude and longitude are valid).
-
-// fix.status == gps_fix::STATUS_DGPS
-// 3D fix (latitude, longitude, and altitude are valid).
-
 // fix.satellites: satellites used for the current fix
 // gps.sat_count: satellites currently tracked/seen by the parser
 
@@ -96,8 +81,6 @@ void setup()
   u8x8.print(F("Initializing TMP")); 
   delay(OLED_SENSOR_CALIBRATION_DELAY);
   initTempSensor();
-  
-  printHeader();
 }
 
 void initOled()
@@ -142,7 +125,7 @@ void performReadouts()
 
 void updateScreen()
 {
-  printHeader();
+  printHeader(&gpsReadouts);
 
   if(screenUpdate.currentScreen == 0)
   {
@@ -167,61 +150,7 @@ void updateScreen()
 
 void printHeader()
 {
-  u8x8.setInverseFont(1);
-  u8x8.setCursor(0,0);
-
-  if(gpsReadouts.wasGpsFix == false && gpsReadouts.gpsHasFix == false)
-  {
-    u8x8.print(F("Waiting for sats"));
-  }
-  else
-  {
-    u8x8.print(gpsReadouts.year);  
-    u8x8.print(F("."));
-    if(gpsReadouts.month < 10)
-    {
-      u8x8.print(0);      
-    }
-    u8x8.print(gpsReadouts.month);
-    u8x8.print(F("."));
-    if(gpsReadouts.day < 10)
-    {
-      u8x8.print(0);      
-    }
-    u8x8.print(gpsReadouts.day);
-    u8x8.print(F("  "));
-    u8x8.setCursor(11, 0);
-    if(gpsReadouts.hour < 10)
-    {
-      u8x8.print(0);      
-    }
-    u8x8.print(gpsReadouts.hour);
-    u8x8.print(F(":"));
-    if(gpsReadouts.minutes < 10)
-    {
-      u8x8.print(0);      
-    }
-    u8x8.print(gpsReadouts.minutes);
-  }
-
-  u8x8.setInverseFont(0);
-
-  u8x8.setCursor(0, 1);
-
-  if(gpsReadouts.gpsHasFix)
-  {
-    u8x8.print(F("Fix "));
-    if(gpsReadouts.numSV < 10)
-    {
-      u8x8.print(FS(space));
-    }
-    u8x8.print(gpsReadouts.numSV);
-  }
-  else
-  {    
-    u8x8.print(F("No fix"));
-  }
-
+  printGpsHeader(u8x8, &gpsReadouts);
   printBattery(u8x8, &battery);
 }
 

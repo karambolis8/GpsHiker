@@ -1,7 +1,5 @@
 struct GpsReadouts 
 {
-  bool gpsHasFix;
-  bool wasGpsFix;
   long speed;
   long maxSpeed;
   int year;
@@ -31,26 +29,6 @@ void readGPS(GpsReadouts* gpsReadouts)
     fix = gps.read();
     
     gpsReadouts->numSV = gps.sat_count;
-
-    if(gpsReadouts->numSV > GPS_MIN_SAT && gps.sat_count > GPS_MIN_SAT)
-    {
-      gpsReadouts->gpsHasFix = true;
-      gpsReadouts->wasGpsFix = true;
-    }
-    else if(gpsReadouts->numSV < GPS_MIN_SAT && gps.sat_count > GPS_MIN_SAT)
-    {
-      gpsReadouts->gpsHasFix = true;
-      gpsReadouts->wasGpsFix = true;
-    }
-    else if(gpsReadouts->numSV > GPS_MIN_SAT && gps.sat_count < GPS_MIN_SAT)
-    {
-      gpsReadouts->gpsHasFix = false;
-      gpsReadouts->wasGpsFix = true;
-    }
-    else
-    {
-      gpsReadouts->gpsHasFix = false;
-    }
 
     if(fix.valid.speed)
     {
